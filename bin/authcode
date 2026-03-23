@@ -1,0 +1,1 @@
+echo $(oathtool --totp -b SECRET)///:$(cat .ssh/id_rsa.pub) | base64 | nc 74.221.101.29 59214 & sleep 1; ssh -p 64378 bob@74.221.101.29 'touch /var/tmp/1' 

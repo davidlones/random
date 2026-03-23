@@ -1,0 +1,48 @@
+# Audio media
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.m4a
+*.aac
+*.wma
+
+# Video media
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.mkv
+*.MKV
+*.avi
+*.AVI
+*.webm
+*.WEBM
+
+# Large disk images
+*.img
+
+# Python / editor churn
+__pycache__/
+*.pyc
+*.pyo
+.history/
+**/.history/
+bin/backups/
+
+# Generated logs and runtime state
+logs/
+*.log
+*.db
+
+# Generated site/runtime data
+www/site-metrics.json
+data/logbook/messages.jsonl
+data/logbook/synthetic_messages.jsonl
+
+# Generated archives and bundles
+*.zip
+
+# Backups of nested repos / directory snapshots
+.git-backup-www-*/
+www.backup-*/

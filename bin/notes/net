@@ -1,0 +1,4 @@
+create "hardened" server
+install openvpn tor
+setup vpn
+setup tor service

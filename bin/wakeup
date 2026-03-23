@@ -1,0 +1,6 @@
+#!/bin/bash
+while true; do
+    lights
+    play Music/wakeup.wav
+    lights
+done

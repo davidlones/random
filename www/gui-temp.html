@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sol-37 • Retro UI</title>
+<meta name="color-scheme" content="light">
+<style>
+  /* --------- Core Reset --------- */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "MS Sans Serif", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #000;
+    overflow: hidden;
+    cursor: default;
+    /* NEW: cosmic wallpaper */
+    --teal: #0b7070;
+    --teal2:#045a5a;
+    background:
+      radial-gradient(1500px 700px at 80% 10%, rgba(255,255,255,0.08), transparent 60%),
+      radial-gradient(1200px 600px at 15% 90%, rgba(255,255,255,0.06), transparent 60%),
+      radial-gradient(900px 500px at 50% 50%, rgba(255,255,255,0.05), transparent 60%),
+      linear-gradient(180deg, #0b0f1a 0%, #092023 55%, #071013 100%);
+  }
+  /* subtle CRT scanlines + noise */
+  .vfx::before, .vfx::after { content:""; position:absolute; inset:0; pointer-events:none; }
+  .vfx::before {
+    background: repeating-linear-gradient( to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 1px, transparent 1px, transparent 2px );
+    mix-blend-mode: soft-light; opacity:.25; filter: blur(.1px);
+  }
+  .vfx::after {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><filter id="n"><feTurbulence baseFrequency="0.7" numOctaves="2" type="fractalNoise"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.06"/></svg>');
+    opacity:.6; mix-blend-mode: overlay; background-size: 128px 128px;
+  }
+
+  /* --------- Window 95 chrome (with gentle shadow + tighter radius) --------- */
+  .win95-window {
+    position: absolute;
+    min-width: 320px;
+    min-height: 180px;
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #dfdfdf, 0 12px 28px rgba(0,0,0,.35);
+    border-radius: 6px;
+    max-width: 100vw;
+    max-height: calc(100vh - 32px);
+    backdrop-filter: saturate(1.05);
+  }
+  .titlebar {
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    background: linear-gradient(#00125a, #1270bf);
+    color: #fff; padding: 2px 8px; cursor: move; user-select: none;
+    font-weight: 700; font-size: 13px; border-top-left-radius: 4px; border-top-right-radius: 4px;
+    text-shadow: 0 1px 0 rgba(0,0,0,.35);
+  }
+  .titlebar .controls { display: flex; gap: 4px; }
+  .titlebar button { width: 18px; height: 18px; background: #c0c0c0; border: 1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; padding: 0; cursor: pointer; line-height: 0; border-radius: 2px; }
+  .content { padding: 8px; background: #c0c0c0; height: calc(100% - 26px); overflow: auto; }
+  .statusbar { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; background: #c0c0c0; border-top: 1px solid #fff; box-shadow: inset 0 1px 0 #808080; font-size: 11px; padding: 2px 6px; display: none; }
+
+  /* --------- Taskbar & Start (glassier, pinned top-most) --------- */
+  .taskbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+    background: rgba(208,208,208,.9); border-top: 2px solid #fff; box-shadow: inset 0 1px 0 #808080, 0 -2px 8px rgba(0,0,0,.25);
+    display: grid; grid-template-columns: 132px 1fr 160px; gap: 6px; align-items: center; padding: 3px 6px;
+    backdrop-filter: blur(6px) saturate(1.2);
+  }
+  .start-btn { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; cursor: pointer; background: #c0c0c0; border: 1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; font-weight: 700; border-radius: 4px; }
+  .start-menu {
+    position: absolute; bottom: 32px; left: 6px; width: 320px; background: rgba(192,192,192,.98);
+    border: 2px solid #fff; border-right-color: #404040; border-bottom-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #dfdfdf, 0 12px 28px rgba(0,0,0,.35);
+    display: none; border-radius: 6px; backdrop-filter: blur(6px) saturate(1.1);
+  }
+  .start-menu h4 { margin: 10px; font-size: 13px; }
+  .start-menu ul { list-style: none; margin: 0; padding: 0 8px 8px; }
+  .start-menu li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-radius: 4px; }
+  .start-menu li:hover { background: #0a3a88; color: #fff; }
+  .submenu { margin: 6px 8px 10px; padding: 6px; background:#dfdfdf; border:1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; border-radius: 4px; }
+  .submenu h5 { margin: 0 0 6px; font-size: 12px; }
+  .submenu .item { padding: 6px 6px; background:#cfcfcf; margin: 3px 0; border:1px solid #808080; cursor:pointer; border-radius: 3px; }
+  .submenu .item:hover { background:#0a3a88; color:#fff; }
+
+  .task-buttons { display: flex; gap: 6px; overflow: hidden; align-items:center; }
+  .task-button { min-width: 160px; max-width: 260px; height: 24px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; padding: 0 10px; display: inline-flex; align-items: center; background: #cfcfcf; border: 1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; cursor: pointer; border-radius: 4px; }
+  .task-button.active { outline: 2px solid #0a3a88; color: #000; background: #e6e6e6; }
+
+  .tray { justify-self: end; display: flex; justify-content: flex-end; gap: 6px; align-items: center; }
+  .clock { background: #e6e6e6; border: 1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; padding: 2px 8px; font-size: 12px; min-width: 120px; text-align: center; border-radius: 4px; }
+
+  /* --------- Desktop --------- */
+  .desktop { position: absolute; inset: 0 0 32px 0; }
+  .desktop a.icon { position: absolute; width: 92px; text-align: center; color: #f0f6ff; text-decoration: none; font-size: 12px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  .desktop a.icon img { width: 48px; height: 48px; display: block; margin: 0 auto 4px; image-rendering: pixelated; }
+
+  /* --------- Terminal --------- */
+  .terminal { height: 100%; display: grid; grid-template-rows: 1fr auto; background: #000; color: #0f0; font-family: "Lucida Console", "Courier New", monospace; border: 2px solid #000; border-radius: 0 0 6px 6px; }
+  .term-output { padding: 8px; overflow: auto; white-space: pre-wrap; }
+  .term-input { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: center; padding: 6px; background: #111; border-top: 1px solid #0a0; }
+  .term-input label { color: #0f0; font-size: 12px; }
+  .term-input input { background: #000; color: #0f0; border: 1px solid #0a0; padding: 4px 6px; font-family: inherit; border-radius: 3px; }
+  .blink { animation: blink 1s steps(1,end) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* --------- Blog window --------- */
+  .split { display: grid; grid-template-columns: 240px 1fr; gap: 8px; height: 100%; }
+  .panel { background: #fff; border: 2px solid #fff; border-right-color: #808080; border-bottom-color: #808080; box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #dfdfdf; overflow: auto; border-radius: 4px; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { padding: 8px 10px; border-bottom: 1px dashed #c0c0c0; cursor: pointer; font-size: 13px; }
+  .list li:hover, .list li.active { background: #0a3a88; color: #fff; }
+  .viewer { padding: 12px; font-size: 14px; line-height: 1.35; background: #fff; border-radius: 4px; }
+  .viewer pre, .viewer code { background: #f2f2f2; padding: 6px; overflow: auto; }
+
+  /* --------- Document window (iframe) --------- */
+  .doc-frame { width: 100%; height: 100%; border: 0; background: #fff; border-radius: 0 0 6px 6px; }
+
+  /* --------- Themes --------- */
+  .theme-amber .terminal { color: #ffbf00; }
+  .theme-amber .term-input label, .theme-amber .term-input input { color: #ffbf00; border-color: #cc9a00; }
+  .theme-gray .terminal { color: #d0d0d0; }
+  .theme-gray .term-input label, .theme-gray .term-input input { color: #d0d0d0; border-color: #666; }
+
+  /* --------- Utility --------- */
+  .hidden { display: none !important; }
+  .maximized { left: 0 !important; top: 0 !important; width: 100% !important; height: calc(100% - 32px) !important; }
+
+  /* NEW: mobile-specific tweaks */
+  @media (max-width: 640px) { .win95-window { min-width: auto; min-height: 160px; } .desktop a.icon { width: 88px; } }
+  @media (prefers-reduced-motion: reduce) { .blink { animation: none; } }
+
+  /* --- z-index sanity (ensures taskbar & start menu are topmost) --- */
+  .desktop      { z-index: 50; }
+  .win95-window { z-index: 100; }
+  .taskbar      { z-index: 1000; }
+  .start-menu   { z-index: 1001; }
+</style>
+</head>
+<body class="vfx">
+  <div class="desktop" id="desktop">
+    <a class="icon" style="left:16px; top:16px;" href="#" data-open="about">
+      <img alt="My Computer" src="data:image/svg+xml;utf8,<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='48' height='36' y='6' fill='%23c0c0c0' stroke='%23000'/><rect x='4' y='10' width='40' height='24' fill='%23000080'/><rect x='12' y='36' width='24' height='6' fill='%237f7f7f' stroke='%23000'/></svg>"><span>Sol-37</span>
+    </a>
+    <a class="icon" style="left:16px; top:100px;" href="#" data-open="terminal">
+      <img alt="Command" src="data:image/svg+xml;utf8,<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='48' height='36' y='6' fill='%23000' stroke='%2300ff00'/><text x='8' y='28' font-size='18' fill='%2300ff00' font-family='monospace'>&gt;_</text></svg>"><span>Command</span>
+    </a>
+    <a class="icon" style="left:16px; top:184px;" href="#" data-open="blog">
+      <img alt="Blog" src="data:image/svg+xml;utf8,<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect x='6' y='8' width='36' height='32' fill='%23fff' stroke='%23000'/><line x1='10' y1='14' x2='38' y2='14' stroke='%23000'/><line x1='10' y1='20' x2='38' y2='20' stroke='%23000'/><line x1='10' y1='26' x2='38' y2='26' stroke='%23000'/><line x1='10' y1='32' x2='28' y2='32' stroke='%23000'/></svg>"><span>Blog</span>
+    </a>
+    <!-- NEW: Star Map app icon -->
+    <a class="icon" style="left:16px; top:268px;" href="#" data-open="starmap">
+      <img alt="Star Map" src="data:image/svg+xml;utf8,<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='48' height='48' rx='8' fill='%23020819'/><circle cx='24' cy='24' r='10' fill='none' stroke='%23aef' stroke-width='1.2'/><circle cx='24' cy='24' r='2' fill='%23fff'/><g fill='%23fff'><circle cx='10' cy='12' r='1'/><circle cx='18' cy='8' r='1'/><circle cx='34' cy='10' r='1'/><circle cx='40' cy='20' r='1'/><circle cx='8' cy='30' r='1'/><circle cx='20' cy='40' r='1'/><circle cx='30' cy='36' r='1'/><circle cx='42' cy='32' r='1'/></g></svg>"><span>Star Map</span>
+    </a>
+  </div>
+
+  <!-- About Window -->
+  <section class="win95-window hidden" id="win-about" style="left: 120px; top: 80px; width: 520px; height: 320px;">
+    <div class="titlebar" data-drag-handle>
+      <span>About — Sol-37 Retro UI</span>
+      <div class="controls">
+        <button title="Minimize" data-action="minimize" aria-label="Minimize">_</button>
+        <button title="Maximize" data-action="maximize" aria-label="Maximize">▢</button>
+        <button title="Close" data-action="close" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="content">
+      <h3>Sol-37</h3>
+      <p>Windows-95-styled desktop with dynamic posts and apps.</p>
+      <ul>
+        <li><strong>HTML in posts/</strong> → desktop icons + windowed viewer</li>
+        <li><strong>Markdown in posts/</strong> → show in Terminal + Start → Posts, view in Blog</li>
+        <li><strong>Apps</strong> → React apps can run in a window via <em>srcdoc</em></li>
+      </ul>
+      <p>Try <code>posts</code>, <code>openpost &lt;id&gt;</code>, <code>cat &lt;id&gt;</code>, or click icons.</p>
+    </div>
+    <div class="statusbar" aria-hidden="true">Ready</div>
+  </section>
+
+  <!-- Terminal Window -->
+  <section class="win95-window" id="win-terminal" style="left: 240px; top: 140px; width: 720px; height: 420px;">
+    <div class="titlebar" data-drag-handle>
+      <span>Command Prompt — C:\\SOL37\\</span>
+      <div class="controls">
+        <button title="Minimize" data-action="minimize" aria-label="Minimize">_</button>
+        <button title="Maximize" data-action="maximize" aria-label="Maximize">▢</button>
+        <button title="Close" data-action="close" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="content terminal" id="terminal">
+      <div class="term-output" id="term-out"></div>
+      <div class="term-input">
+        <label for="term-in">C:\\SOL37&gt;</label>
+        <input id="term-in" type="text" spellcheck="false" autocomplete="off" placeholder="type a command and press Enter"/>
+      </div>
+    </div>
+  </section>
+
+  <!-- Blog Window -->
+  <section class="win95-window hidden" id="win-blog" style="left: 160px; top: 120px; width: 840px; height: 520px;">
+    <div class="titlebar" data-drag-handle>
+      <span>Blog — C:\\SOL37\\Desktop\\Blog\\</span>
+      <div class="controls">
+        <button title="Minimize" data-action="minimize" aria-label="Minimize">_</button>
+        <button title="Maximize" data-action="maximize" aria-label="Maximize">▢</button>
+        <button title="Close" data-action="close" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="split" style="height:100%">
+        <aside class="panel" id="posts-list-panel">
+          <ul class="list" id="posts-list" aria-label="Posts"></ul>
+        </aside>
+        <main class="panel viewer" id="post-viewer">
+          <h2>Welcome</h2>
+          <p>This blog lists files from <code>./posts/index.json</code> or dynamic discovery. Drop a <em>.md</em> here to preview, or use terminal commands.</p>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- Start Menu & Taskbar -->
+  <nav class="start-menu" id="start-menu" aria-hidden="true">
+    <h4>Sol-37</h4>
+    <ul>
+      <li data-open="terminal">Command Prompt</li>
+      <li data-open="blog">Blog</li>
+      <li data-open="about">About Sol-37</li>
+      <li data-open="starmap">Interactive Star Map</li>
+      <li id="menu-theme">Themes ▸</li>
+    </ul>
+    <div class="submenu" id="menu-posts">
+      <h5>Posts</h5>
+      <div id="menu-posts-html"></div>
+      <div id="menu-posts-md"></div>
+    </div>
+  </nav>
+
+  <footer class="taskbar" id="taskbar">
+    <button class="start-btn" id="start-btn" aria-expanded="false">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" fill="#008000"></rect><text x="3" y="12" font-size="12" fill="#fff">S</text></svg>
+      Start
+    </button>
+    <div class="task-buttons" id="task-buttons"></div>
+    <div class="tray">
+      <div class="clock" id="clock">--:-- --</div>
+    </div>
+  </footer>
+
+<script>
+(function(){
+  // ---------- Helpers ----------
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const WIN_MARGIN_BOTTOM = 32; // taskbar height
+  const MOBILE_QUERY = window.matchMedia('(max-width: 640px)');
+  const isMobile = () => MOBILE_QUERY.matches;
+
+  MOBILE_QUERY.addEventListener?.('change', () => { $$('.win95-window').forEach(clampToViewport); });
+
+  const bringToFront = (el) => {
+    const maxZ = Math.max( ...$$('.win95-window').map(w => +getComputedStyle(w).zIndex || 10), 10 );
+    el.style.zIndex = String(maxZ + 1);
+  };
+
+  const getTaskButton = (id) => document.querySelector(`.task-button[data-window="${id}"]`);
+  const ensureTaskButton = (winEl) => { let btn = getTaskButton(winEl.id); if (!btn) { btn = createTaskButton(winEl); $('#task-buttons').appendChild(btn); } return btn; };
+  const createTaskButton = (winEl) => {
+    const id = winEl.id;
+    const btn = document.createElement('button');
+    btn.className = 'task-button';
+    btn.textContent = winEl.querySelector('.titlebar span').textContent;
+    btn.dataset.window = id;
+    btn.addEventListener('click', ()=> toggleWindow(winEl, true));
+    return btn;
+  };
+
+  const toggleWindow = (winEl, fromTaskbar=false) => {
+    const btn = ensureTaskButton(winEl);
+    if (winEl.classList.contains('hidden')) {
+      winEl.classList.remove('hidden');
+      if (isMobile()) winEl.classList.add('maximized');
+      bringToFront(winEl); btn.classList.add('active'); focusFirst(winEl); clampToViewport(winEl); return;
+    }
+    if (fromTaskbar) { winEl.classList.add('hidden'); btn.classList.remove('active'); return; }
+    bringToFront(winEl); btn.classList.add('active'); clampToViewport(winEl);
+  };
+
+  const focusFirst = (win) => { const first = win.querySelector('input,button,[tabindex="0"],a,select,textarea'); if (first) first.focus(); };
+
+  function clampToViewport(win){
+    const r = win.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight - WIN_MARGIN_BOTTOM;
+    if (r.width > vw) win.style.width = Math.max(vw, 280) + 'px';
+    if (r.height > vh) win.style.height = Math.max(vh, 160) + 'px';
+    const rect = win.getBoundingClientRect();
+    const maxLeft = Math.max(0, vw - Math.min(rect.width, vw));
+    const maxTop  = Math.max(0, vh - Math.min(rect.height, vh));
+    if (rect.left > maxLeft) win.style.left = maxLeft + 'px';
+    if (rect.top  > maxTop)  win.style.top  = maxTop  + 'px';
+    if (rect.left < 0)       win.style.left = '0px';
+    if (rect.top  < 0)       win.style.top  = '0px';
+  }
+  window.addEventListener('resize', ()=> $$('.win95-window').forEach(clampToViewport));
+
+  // ---------- Window wiring ----------
+  $$('.win95-window').forEach((win)=>{
+    if (!win.classList.contains('hidden') && isMobile()) { win.classList.add('maximized'); }
+    bringToFront(win);
+    const tb = ensureTaskButton(win); tb.classList.toggle('active', !win.classList.contains('hidden'));
+    const handle = win.querySelector('[data-drag-handle]');
+    let dragging = false, offX=0, offY=0;
+
+    handle.addEventListener('dblclick', ()=>{ win.classList.toggle('maximized'); bringToFront(win); clampToViewport(win); });
+    handle.addEventListener('mousedown', (e)=>{
+      dragging = true; bringToFront(win);
+      const rect = win.getBoundingClientRect();
+      offX = e.clientX - rect.left; offY = e.clientY - rect.top;
+      document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', (e)=>{
+      if(!dragging || win.classList.contains('maximized')) return;
+      win.style.left = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - offX)) + 'px';
+      win.style.top  = Math.max(0, Math.min(window.innerHeight - 64, e.clientY - offY)) + 'px';
+    });
+    window.addEventListener('mouseup', ()=>{ dragging = false; document.body.style.userSelect = ''; });
+
+    win.querySelectorAll('.titlebar [data-action]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const act = btn.dataset.action;
+        const taskBtn = ensureTaskButton(win);
+        if (act === 'close') { win.classList.add('hidden'); taskBtn.remove(); return; }
+        if (act === 'minimize') { win.classList.add('hidden'); taskBtn.classList.remove('active'); return; }
+        if (act === 'maximize') { win.classList.toggle('maximized'); bringToFront(win); clampToViewport(win); taskBtn.classList.add('active'); }
+      });
+    });
+
+    win.addEventListener('mousedown', ()=>{ bringToFront(win); $$('.task-button').forEach(b=>b.classList.remove('active')); ensureTaskButton(win).classList.add('active'); });
+    clampToViewport(win);
+  });
+
+  // Desktop icons open windows
+  $$('.desktop a.icon').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const map = { about: '#win-about', terminal: '#win-terminal', blog: '#win-blog' };
+      if (a.dataset.open === 'starmap') { openStarMapProgramWindow(); return; }
+      const w = document.querySelector(map[a.dataset.open]); if (!w) return;
+      toggleWindow(w); ensureTaskButton(w).classList.add('active'); if (w.id === 'win-terminal') document.querySelector('#term-in').focus();
+    });
+  });
+
+  // Start menu
+  const startBtn = document.getElementById('start-btn');
+  const startMenu = document.getElementById('start-menu');
+  startMenu.style.zIndex = 1001; // pin above everything
+  startBtn.addEventListener('click', ()=>{
+    const open = startMenu.style.display === 'block';
+    startMenu.style.display = open ? 'none' : 'block';
+    startBtn.setAttribute('aria-expanded', String(!open));
+    if (!open) startMenu.style.zIndex = 1001;
+    if (!open) startMenu.querySelector('li, .item')?.focus?.();
+  });
+  document.addEventListener('click', (e)=>{ if (!startMenu.contains(e.target) && !startBtn.contains(e.target)) { startMenu.style.display = 'none'; startBtn.setAttribute('aria-expanded','false'); } });
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') { startMenu.style.display='none'; startBtn.setAttribute('aria-expanded','false'); } });
+  startMenu.querySelectorAll('[data-open]').forEach(item=>{
+    item.setAttribute('tabindex','0');
+    item.addEventListener('click', ()=>{
+      if (item.dataset.open === 'starmap') { startMenu.style.display='none'; openStarMapProgramWindow(); return; }
+      const map = { about: '#win-about', terminal: '#win-terminal', blog: '#win-blog' };
+      const w = document.querySelector(map[item.dataset.open]);
+      toggleWindow(w); startMenu.style.display = 'none'; ensureTaskButton(w).classList.add('active'); if (w.id === 'win-terminal') document.querySelector('#term-in').focus();
+    });
+  });
+
+  // Clock
+  const clock = document.getElementById('clock');
+  function updateClock(){ const d = new Date(); const hrs = d.getHours(); const h12 = ((hrs + 11) % 12) + 1; const ampm = hrs >= 12 ? 'PM' : 'AM'; const m = String(d.getMinutes()).padStart(2,'0'); clock.textContent = `${h12}:${m} ${ampm}`; }
+  updateClock(); setInterval(updateClock, 1000*15);
+
+  // ---------- Tiny Markdown ----------
+  function mdToHtml(md){
+    let h = String(md ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h = h.replace(/^(#{1,3})\s?(.*)$/gm,(m,hash,txt)=>`<h${hash.length}>${txt}</h${hash.length}>`)
+         .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+         .replace(/\*(.+?)\*/g,'<em>$1</em>')
+         .replace(/`([^`]+)`/g,'<code>$1</code>')
+         .replace(/\bhttps?:\/\/[^\s)]+/g, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+    h = h.split(/\n{2,}/).map(block=>{ if (/^<h[1-3]>/.test(block)) return block; return `<p>${block.replace(/\n/g,'<br>')}</p>`; }).join('\n');
+    return h;
+  }
+
+  // ---------- Posts discovery ----------
+  const postsListEl = document.getElementById('posts-list');
+  const postViewer = document.getElementById('post-viewer');
+  const desktop = document.getElementById('desktop');
+  const menuHtml = document.getElementById('menu-posts-html');
+  const menuMd = document.getElementById('menu-posts-md');
+
+  let POSTS = []; let HTML_POSTS = []; let MD_POSTS = [];
+
+  async function loadPosts(){
+    try{
+      const res = await fetch('posts/index.json', {cache:'no-store'});
+      if (!res.ok) throw new Error('index not found');
+      const data = await res.json();
+      POSTS = (data.posts||[]).map(p=>{ const f = p.file || ''; const type = f.endsWith('.html') ? 'html' : f.endsWith('.md') ? 'md' : 'other'; return { id:p.id, title:p.title||p.id, date:p.date||'', file:f, type }; });
+    }catch(e){ POSTS = [ {id:'hello-world', title:'Hello World', date:'2025-11-05', file:'posts/hello-world.md', type:'md'} ]; }
+    HTML_POSTS = POSTS.filter(p=>p.type==='html'); MD_POSTS = POSTS.filter(p=>p.type==='md');
+    renderPostsList(); mountDesktopHtmlIcons(); buildStartMenuPosts();
+  }
+
+  function renderPostsList(){
+    postsListEl.innerHTML = '';
+    const toShow = MD_POSTS; toShow.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    for(const p of toShow){ const li = document.createElement('li'); li.textContent = `${p.title}${p.date? ' — '+p.date:''}`; li.dataset.id = p.id; li.title = p.id; li.addEventListener('click', ()=> openPost(p.id)); postsListEl.appendChild(li); }
+  }
+
+  function mountDesktopHtmlIcons(){
+    const startX = 120, startY = 16, stepY  = 84;
+    HTML_POSTS.forEach((p, idx)=>{
+      const a = document.createElement('a'); a.className = 'icon'; a.style.left = (startX) + 'px'; a.style.top  = (startY + idx*stepY) + 'px'; a.href = '#'; a.dataset.doc = p.id; a.title = p.title;
+      const svg = "data:image/svg+xml;utf8," + encodeURIComponent(`<?xml version='1.0'?><svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect x='8' y='6' width='32' height='36' fill='#fff' stroke='#000'/><line x1='12' y1='14' x2='36' y2='14' stroke='#000'/><line x1='12' y1='20' x2='36' y2='20' stroke='#000'/><line x1='12' y1='26' x2='28' y2='26' stroke='#000'/></svg>`);
+      const img = document.createElement('img'); img.alt = 'Document'; img.src = svg;
+      const span = document.createElement('span'); span.textContent = p.title.slice(0,22);
+      a.appendChild(img); a.appendChild(span);
+      a.addEventListener('click', (e)=>{ e.preventDefault(); openHtmlDocumentWindow(p); });
+      desktop.appendChild(a);
+    });
+  }
+
+  function buildStartMenuPosts(){
+    menuHtml.innerHTML = ''; menuMd.innerHTML = '';
+    if (HTML_POSTS.length){
+      const h = document.createElement('h5'); h.textContent = 'HTML'; if (!menuHtml.previousElementSibling || menuHtml.previousElementSibling.tagName!=='H5'){ menuHtml.parentElement.insertBefore(h, menuHtml); }
+      HTML_POSTS.forEach(p=>{ const div = document.createElement('div'); div.className = 'item'; div.textContent = p.title; div.addEventListener('click', ()=>{ startMenu.style.display='none'; openHtmlDocumentWindow(p); }); menuHtml.appendChild(div); });
+    }
+    if (MD_POSTS.length){
+      const h = document.createElement('h5'); h.textContent = 'Markdown'; if (!menuMd.previousElementSibling || menuMd.previousElementSibling.tagName!=='H5'){ menuMd.parentElement.insertBefore(h, menuMd); }
+      MD_POSTS.forEach(p=>{ const div = document.createElement('div'); div.className = 'item'; div.textContent = p.title; div.addEventListener('click', async ()=>{ startMenu.style.display='none'; toggleWindow(document.getElementById('win-blog')); await openPost(p.id); }); menuMd.appendChild(div); });
+    }
+  }
+
+  async function openPost(id){
+    const p = MD_POSTS.find(x=>x.id===id); if(!p) return;
+    document.querySelectorAll('#posts-list li').forEach(li=> li.classList.toggle('active', li.dataset.id===id));
+    postViewer.innerHTML = `<h2>${p.title}</h2><p><em>${p.date||''}</em></p><p>Loading…</p>`;
+    try{ const res = await fetch(p.file, {cache:'no-store'}); const text = await res.text(); postViewer.innerHTML = p.file.endsWith('.md') ? mdToHtml(text) : text.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi,''); }
+    catch(err){ postViewer.innerHTML = `<p>Could not load <code>${p.file}</code>.</p>`; }
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
+  function openHtmlDocumentWindow(p){
+    let win = document.getElementById('doc-'+p.id);
+    if (!win){
+      win = document.createElement('section');
+      win.className = 'win95-window';
+      win.id = 'doc-'+p.id;
+      win.style.left = (180 + Math.floor(Math.random()*60)) + 'px';
+      win.style.top  = (100 + Math.floor(Math.random()*40)) + 'px';
+      win.style.width = '720px';
+      win.style.height= '480px';
+      if (isMobile()) { win.classList.add('maximized'); win.style.left = '0px'; win.style.top  = '0px'; win.style.width  = '100%'; win.style.height = 'calc(100% - 32px)'; }
+      win.innerHTML = `
+        <div class="titlebar" data-drag-handle>
+          <span>${escapeHtml(p.title)} — C:\\SOL37\\Posts\\</span>
+          <div class="controls">
+            <button title="Minimize" data-action="minimize" aria-label="Minimize">_</button>
+            <button title="Maximize" data-action="maximize" aria-label="Maximize">▢</button>
+            <button title="Close" data-action="close" aria-label="Close">✕</button>
+          </div>
+        </div>
+        <div class="content" style="padding:0">
+          <iframe class="doc-frame" src="${p.file}" title="${escapeHtml(p.title)}"></iframe>
+        </div>`;
+      document.body.appendChild(win); wireWindow(win);
+    }
+    toggleWindow(win);
+  }
+
+  function wireWindow(win){
+    const tb = ensureTaskButton(win);
+    const handle = win.querySelector('[data-drag-handle]');
+    let dragging=false, offX=0, offY=0;
+    handle.addEventListener('dblclick', ()=>{ win.classList.toggle('maximized'); bringToFront(win); clampToViewport(win); });
+    handle.addEventListener('mousedown',(e)=>{ dragging=true; bringToFront(win); const rect = win.getBoundingClientRect(); offX = e.clientX - rect.left; offY = e.clientY - rect.top; document.body.style.userSelect='none'; });
+    window.addEventListener('mousemove',(e)=>{ if(!dragging || win.classList.contains('maximized')) return; win.style.left = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - offX)) + 'px'; win.style.top  = Math.max(0, Math.min(window.innerHeight - 64, e.clientY - offY)) + 'px'; });
+    window.addEventListener('mouseup', ()=>{ dragging=false; document.body.style.userSelect=''; });
+    win.querySelectorAll('.titlebar [data-action]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const act = btn.dataset.action; const taskBtn = ensureTaskButton(win);
+        if (act === 'close') { win.classList.add('hidden'); taskBtn.remove(); return; }
+        if (act === 'minimize') { win.classList.add('hidden'); taskBtn.classList.remove('active'); return; }
+        if (act === 'maximize') { win.classList.toggle('maximized'); bringToFront(win); clampToViewport(win); taskBtn.classList.add('active'); }
+      });
+    });
+    win.addEventListener('mousedown', ()=>{ bringToFront(win); $$('.task-button').forEach(b=>b.classList.remove('active')); ensureTaskButton(win).classList.add('active'); });
+    clampToViewport(win); tb.classList.add('active');
+  }
+
+  // ---------- Drag-drop .md into viewer ----------
+  document.getElementById('win-blog').addEventListener('dragover', (e)=>{ e.preventDefault(); });
+  document.getElementById('win-blog').addEventListener('drop', (e)=>{
+    e.preventDefault(); const file = e.dataTransfer.files && e.dataTransfer.files[0]; if (!file) return;
+    if (!/\.md$|\.txt$/i.test(file.name)) { alert('Drop a .md or .txt file to preview.'); return; }
+    const reader = new FileReader(); reader.onload = ()=>{ postViewer.innerHTML = mdToHtml(String(reader.result||'')); }; reader.readAsText(file);
+  });
+
+  // ---------- Terminal ----------
+  const out = document.getElementById('term-out');
+  const input = document.getElementById('term-in');
+  let history = []; let hIndex = -1;
+  function print(txt){ out.innerHTML += txt + "\n"; out.scrollTop = out.scrollHeight; }
+  function banner(){ print("Sol-37 Interactive Shell (retro)\nType 'help' to begin.\n"); }
+  banner();
+
+  const commands = {
+    help(){ print(["Available commands:",
+      "  help                        Show this help",
+      "  about                       About Sol-37",
+      "  whoami                      Print identity",
+      "  date                        Show local time",
+      "  ls                          List desktop items",
+      "  posts                       List discovered posts (HTML + MD)",
+      "  openpost <id>               Open a post (MD -> Blog, HTML -> window)",
+      "  cat <id>                    Print MD post content inline",
+      "  open <url|path>             Open a link in a new tab",
+      "  starmap                     Launch Interactive Star Map",
+      "  echo <text>                 Print text",
+      "  clear                       Clear screen",
+      "  theme <green|amber|gray>    Change terminal theme",
+    ].join("\n")); },
+    about(){ print("Sol-37 is your speculative-science sidekick in Win95 clothing. Drag windows, poke around, and have fun."); },
+    whoami(){ print("SOL-37 :: Narrator/Assistant :: C:\\SOL37>"); },
+    date(){ print(new Date().toString()); },
+    ls(){ print("DESKTOP\n  - Sol-37 (About)\n  - Command (Terminal)\n  - Blog (Posts)\n  - Star Map (App)\n  - HTML posts (dynamic icons)"); },
+    posts(){ if (!POSTS.length) { print("No posts found (create posts/index.json). Using demo…"); } POSTS.forEach(p=> print(` - ${p.id} :: ${p.title}${p.date? ' — '+p.date:''} [${p.type}]`)); },
+    async openpost(id){ if(!id){ print("Usage: openpost <id>"); return; } const p = POSTS.find(x=>x.id===id); if(!p){ print("No such post: "+id); return; } if (p.type === 'html'){ openHtmlDocumentWindow(p); } else if (p.type === 'md'){ toggleWindow(document.getElementById('win-blog')); await openPost(id); } else { print("Unknown type for: "+id); } },
+    async cat(id){ if(!id){ print("Usage: cat <id>"); return; } const p = MD_POSTS.find(x=>x.id===id); if(!p){ print("No such markdown post: "+id); return; } try { const res = await fetch(p.file, {cache:'no-store'}); const text = await res.text(); print("\n"+text+"\n"); } catch(e){ print('Failed to read post.'); } },
+    open(arg){ if (!arg) { print("Usage: open <url|path>"); return; } try { const w = window.open(arg, '_blank', 'noopener'); if (w) print("Opening: " + arg); else print("Popup blocked."); } catch(e){ print("Could not open URL."); } },
+    starmap(){ openStarMapProgramWindow(); },
+    echo(arg){ print(arg||''); },
+    clear(){ out.innerHTML = ''; },
+    theme(arg){ const b = document.body; b.classList.remove('theme-amber','theme-gray'); if (arg==='amber') b.classList.add('theme-amber'); else if (arg==='gray') b.classList.add('theme-gray'); else b.classList.remove('theme-amber','theme-gray'); print("Theme set: " + (arg||'green')); }
+  };
+
+  input.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') {
+      const raw = input.value.trim(); if (!raw) return; history.unshift(raw); hIndex = -1;
+      print(`C:\\SOL37> ${raw}`); input.value=''; const [cmd, ...rest] = raw.split(/\s+/); const arg = rest.join(' ');
+      const name = (cmd||'').toLowerCase(); const fn = commands[name]; if (fn) fn(arg); else print(`Unknown command: ${cmd}. Type 'help'.`);
+    } else if (e.key === 'ArrowUp') { e.preventDefault(); if (history.length){ hIndex = Math.min(hIndex+1, history.length-1); input.value = history[hIndex]; input.setSelectionRange(input.value.length,input.value.length); } }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); if (history.length){ hIndex = Math.max(hIndex-1, -1); input.value = hIndex===-1? '': history[hIndex]; } }
+  });
+
+  // Robust taskbar delegation
+  document.getElementById('task-buttons').addEventListener('click', (e)=>{
+    const btn = e.target.closest('.task-button'); if (!btn) return; const w = document.getElementById(btn.dataset.window); if (!w) { btn.remove(); return; } toggleWindow(w, true);
+  });
+
+  document.getElementById('win-terminal').addEventListener('click', ()=> input.focus());
+
+  // Load posts at boot
+  loadPosts();
+
+  // ---------- Star Map Program (React via srcdoc + Babel) ----------
+  function openStarMapProgramWindow(){
+    let win = document.getElementById('app-starmap');
+    if (!win){
+      win = document.createElement('section');
+      win.className = 'win95-window';
+      win.id = 'app-starmap';
+      win.style.left = '220px'; win.style.top = '120px'; win.style.width = '920px'; win.style.height = '580px';
+      if (isMobile()) { win.classList.add('maximized'); win.style.left='0'; win.style.top='0'; win.style.width='100%'; win.style.height='calc(100% - 32px)'; }
+      win.innerHTML = `
+        <div class="titlebar" data-drag-handle>
+          <span>Interactive Star Map — C:\\SOL37\\Apps\\</span>
+          <div class="controls">
+            <button title="Minimize" data-action="minimize" aria-label="Minimize">_</button>
+            <button title="Maximize" data-action="maximize" aria-label="Maximize">▢</button>
+            <button title="Close" data-action="close" aria-label="Close">✕</button>
+          </div>
+        </div>
+        <div class="content" style="padding:0">
+          <iframe class="doc-frame" title="Star Map"></iframe>
+        </div>`;
+      document.body.appendChild(win); wireWindow(win);
+
+      const iframe = win.querySelector('iframe');
+      // Inline srcdoc bootstraps React + app code (from uploaded JSX)
+      iframe.srcdoc = `<!DOCTYPE html>
+<html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>
+<title>Interactive Star Map</title>
+<style>html,body,#root{height:100%;margin:0} body{background:#0b0f1a;color:#eee;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,\"Helvetica Neue\",Arial,sans-serif}</style>
+</head>
+<body>
+<div id=\"root\" aria-label=\"Interactive Star Map\"></div>
+<script src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>
+<script src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>
+<script src=\"https://unpkg.com/@babel/standalone/babel.min.js\"></script>
+<script type=\"text/babel\" data-presets=\"env,react\">
+${escapeHtml(STAR_MAP_APP_SOURCE)}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body></html>`;
+    }
+    toggleWindow(win);
+  }
+
+  // the uploaded JSX source (embedded)
+  const STAR_MAP_APP_SOURCE = `REPLACED_AT_RUNTIME`;
+
+  // Replace placeholder with fetched local file if available, else keep embedded minimal fallback
+  (async ()=>{
+    try {
+      const res = await fetch('interactive_star_map_v_2_react_web_app.jsx', {cache:'no-store'});
+      if (res.ok) {
+        const code = await res.text();
+        window.__STAR_SRC = code;
+      } else {
+        window.__STAR_SRC = 'export default function App(){return React.createElement(\'div\',null,\'Star Map source not found.\') }';
+      }
+    } catch (e) {
+      window.__STAR_SRC = 'export default function App(){return React.createElement(\'div\',null,\'Star Map offline.\') }';
+    }
+    // patch iframe srcdoc with the fetched code
+    const w = document.getElementById('app-starmap');
+    if (w) {
+      const iframe = w.querySelector('iframe');
+      if (iframe && iframe.srcdoc.includes('REPLACED_AT_RUNTIME')) {
+        iframe.srcdoc = iframe.srcdoc.replace('REPLACED_AT_RUNTIME', window.__STAR_SRC.replaceAll('`','\\`'));
+      }
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>

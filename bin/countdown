@@ -1,0 +1,10 @@
+#!/bin/bash
+
+seconds=$1
+date1=$((`date +%s` + $seconds)); 
+
+while [ "$date1" -ge `date +%s` ]; do 
+  figlet -f ~/.figlet/banner3 "$(date -u --date @$(($date1 - `date +%s` )) +%H:%M:%S)"; 
+  sleep 0.1
+  clear
+done

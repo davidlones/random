@@ -1,0 +1,7 @@
+#!/bin/bash
+
+wmctrl -a $1
+shift
+xte "str $@"
+# xte 'key Return'
+xdotool key KP_Enter

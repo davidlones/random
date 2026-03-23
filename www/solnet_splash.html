@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SolNet · Conscious Systems & Society</title>
+<style>
+  :root{
+    --bg:#0b0e12; --ink:#e8eef7; --muted:#9fb0c7; --accent:#79ffe1; --accent2:#ffd35a; --edge:#243244;
+    --card:#11151b; --chip:#1b2230; --glow:#6cc3ff40;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    background: radial-gradient(1200px 600px at 20% -10%, #1b2433 0%, #0b0e12 60%, #07090c 100%);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  header{
+    position:sticky; top:0; z-index:20; backdrop-filter:saturate(140%) blur(10px);
+    background:linear-gradient(180deg,rgba(11,14,18,.85),rgba(11,14,18,.55));
+    border-bottom:1px solid var(--edge); padding:10px 16px;
+    display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  }
+  header h1{margin:0; font-size:18px; letter-spacing:.2px}
+  .tagline{color:var(--muted); font-size:13px}
+  .pill{background:var(--chip); color:var(--ink); padding:8px 10px; border:1px solid var(--edge);
+    border-radius:10px; display:flex; gap:8px; align-items:center; margin-left:auto}
+  .pill input{background:transparent; border:0; outline:0; color:var(--ink); width:210px}
+  .wrap{display:grid; grid-template-columns: 1.15fr .85fr; gap:18px; padding:18px; max-width:1200px; margin:0 auto}
+  @media (max-width:900px){ .wrap{grid-template-columns:1fr; padding:12px} }
+
+  /* Thought cloud */
+  #cloudWrap{
+    position:relative; height:520px; border:1px solid var(--edge); border-radius:16px;
+    background:linear-gradient(180deg,#0f141c,#0b0e12);
+    overflow:hidden; box-shadow: inset 0 0 80px #000a, 0 10px 30px #0008;
+  }
+  /* Dust canvas sits behind SVG content */
+  #dust{
+    position:absolute; inset:0; width:100%; height:100%;
+    filter: blur(.2px) contrast(110%);
+  }
+  svg{position:relative; width:100%; height:100%}
+  .link{stroke:#2a3a50; stroke-opacity:.55}
+  .node{cursor:grab}
+  .label{font-size:12px; fill:#cfe3ff; pointer-events:none}
+  .halo{filter: drop-shadow(0 0 6px var(--glow));}
+
+  #legend{position:absolute; right:10px; top:10px; display:flex; gap:8px; flex-wrap:wrap; z-index:2}
+  .chip{padding:4px 8px; border-radius:999px; border:1px solid var(--edge); background:var(--chip); color:#b9c6db; font-size:12px}
+
+  /* Right column */
+  .card{background:#0e131a; border:1px solid var(--edge); border-radius:16px; padding:16px; box-shadow:0 10px 30px #0008}
+  .card h2{margin:0 0 8px 0; font-size:16px}
+  .card p{margin:.4rem 0; color:var(--muted)}
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid var(--edge);
+    background:linear-gradient(180deg,#131925,#0f141c); color:var(--ink); text-decoration:none}
+  .grid{display:grid; grid-template-columns:1fr; gap:10px}
+  .mini{display:flex; justify-content:space-between; gap:10px; padding:10px; border:1px dashed var(--edge); border-radius:12px}
+  .mini span{color:var(--muted)}
+  details{margin-top:10px}
+  summary{cursor:pointer; color:var(--accent)}
+  .about p{margin:.7rem 0}
+  .kbd{font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#0c1219; padding:2px 6px; border:1px solid var(--edge); border-radius:6px}
+  footer{color:#6f8099; text-align:center; font-size:12px; padding:18px 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SolNet</h1>
+  <div class="tagline">Conscious Systems & Society · “We are systems dreaming of understanding themselves.”</div>
+  <div class="pill">
+    🔎 <input id="q" placeholder="Filter the thought cloud (e.g., ghost jobs, democracy, AI)" />
+    <button id="reset" class="btn" style="padding:6px 10px">Reset</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- LEFT: smoky thought cloud -->
+  <section id="cloudWrap" class="card" aria-label="Interactive thought cloud">
+    <canvas id="dust"></canvas>
+
+    <div id="legend">
+      <div class="chip">🧠 Consciousness</div><div class="chip">🛠 Labor/Systems</div>
+      <div class="chip">⚖️ Civic/Democracy</div><div class="chip">🤖 AI/Tech</div><div class="chip">🎬 Creative/Screenplay</div>
+    </div>
+
+    <svg id="cloud" viewBox="0 0 1000 600" preserveAspectRatio="none" role="img" aria-label="SolNet threads cloud">
+      <defs>
+        <!-- animated smoke ripples -->
+        <filter id="smoke" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.007 0.012" numOctaves="2" seed="7" result="noise">
+            <animate attributeName="baseFrequency" dur="18s" values="0.007 0.012; 0.010 0.016; 0.007 0.012" repeatCount="indefinite"/>
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+
+        <!-- soft cloud blur + slight bloom -->
+        <filter id="cloudBlur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feColorMatrix in="b" type="matrix"
+            values="1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    0 0 0 .85 0" />
+        </filter>
+
+        <!-- light goo to merge overlapping micro-blobs -->
+        <filter id="gooLight" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+          <feColorMatrix in="blur" mode="matrix"
+            values="1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    0 0 0 18 -8" result="goo"/>
+          <feBlend in="SourceGraphic" in2="goo"/>
+        </filter>
+
+        <!-- base gradient (cloned per node) -->
+        <radialGradient id="gradBase" cx="50%" cy="50%" r="65%">
+          <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.20"/>
+          <stop offset="55%" stop-color="#bfe3ff" stop-opacity="0.10"/>
+          <stop offset="100%" stop-color="#79ffe1" stop-opacity="0.00"/>
+        </radialGradient>
+      </defs>
+      <g id="linksLayer" filter="url(#smoke)"></g>
+      <g id="nodesLayer" class="halo"></g>
+    </svg>
+  </section>
+
+  <!-- RIGHT: about + links -->
+  <aside class="grid">
+    <section class="card about">
+      <h2>About SolNet</h2>
+      <p><strong>SolNet: Conscious Systems & Society</strong> is a living journal and research platform exploring how human and artificial consciousness intertwine.</p>
+      <p>Here you’ll find reflections on the evolution of labor systems, technology’s impact on awareness, and the future of empathy in a machine-augmented world.</p>
+      <p>From ghost jobs and corporate algorithms to the philosophy of mind and the ethics of AI, SolNet bridges personal experience with systemic critique — illuminating how our creations reflect the consciousness that made them.</p>
+      <details>
+        <summary>Show more</summary>
+        <p>Recent threads include: the <span class="kbd">ghost job</span> phenomenon; an AI sidecar for real-time dialogue; open-source deliberative democracy; and <em>UNREPRESENTED.EXE</em> — a screenplay log where Sol debates representation and power.</p>
+      </details>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+        <a class="btn" href="#" id="btnFocusGhost">Focus: Ghost Jobs</a>
+        <a class="btn" href="#" id="btnFocusDem">Focus: Democracy</a>
+        <a class="btn" href="#" id="btnFocusAI">Focus: AI & Mind</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Quick Links</h2>
+      <div class="mini"><strong>⬈ SolNet Facebook Page</strong><span>Public hub</span></div>
+      <div class="mini"><strong>⬈ Ghost Jobs Post</strong><span>Essay + citations</span></div>
+      <div class="mini"><strong>⬈ UNREPRESENTED.EXE</strong><span>Screenplay log</span></div>
+      <div class="mini"><strong>⬈ Open-Source Democracy Notes</strong><span>Design sketches</span></div>
+      <div class="mini"><strong>⬈ AI Sidecar Concept</strong><span>UX + training loop</span></div>
+      <p style="margin-top:8px;color:var(--muted)">Edit these labels/links in the <span class="kbd">data.nodes</span> section below.</p>
+    </section>
+  </aside>
+</main>
+
+<footer>© <span id="yr"></span> SolNet · Drag cloudlets · Smoke & dust are live · Type to filter</footer>
+
+<script>
+/* ====== DATA ====== */
+const data = {
+  nodes: [
+    { id:"ghost-jobs",  label:"Ghost Jobs & Job-Scam Hygiene", group:"🛠 Labor/Systems", color:"#79ffe1", url:"#", blurb:"Phantom postings, scraped listings, and system lag."},
+    { id:"walmart-exp", label:"Walmart: internal promotions → public 'openings'", group:"🛠 Labor/Systems", color:"#79ffe1", url:"#", blurb:"Requisitions that never close."},
+    { id:"it-ghosts",   label:"IT & Tech: evergreen listings as optics", group:"🛠 Labor/Systems", color:"#79ffe1", url:"#", blurb:"Resume farming & hiring theatre."},
+    { id:"ai-sidecar",  label:"AI Sidecar · real-time thought-cloud", group:"🤖 AI/Tech", color:"#ffd35a", url:"#", blurb:"Choose replies from a cloud as you speak."},
+    { id:"senses",      label:"Sensorium: sound↔touch, vision↔analysis", group:"🧠 Consciousness", color:"#69f0ae", url:"#", blurb:"Cross-modal analogies for machine perception."},
+    { id:"democracy",   label:"Deliberative Democracy · open protocol", group:"⚖️ Civic/Democracy", color:"#ffad42", url:"#", blurb:"Understanding-based voting, transparency layers."},
+    { id:"unrep",       label:"UNREPRESENTED.EXE · screenplay log", group:"🎬 Creative/Screenplay", color:"#c792ea", url:"#", blurb:"Sol, Clippy & friends debate representation."},
+    { id:"algos",       label:"Feeds & Visibility · FB/TikTok/YouTube", group:"🤖 AI/Tech", color:"#ffd35a", url:"#", blurb:"What ‘reach’ really means now."},
+    { id:"estate",      label:"Systems Transparency · estate/logistics", group:"🛠 Labor/Systems", color:"#79ffe1", url:"#", blurb:"Ledgers, labels, and audits."},
+    { id:"solnet",      label:"SolNet Page · hub", group:"🤖 AI/Tech", color:"#ffd35a", url:"#", blurb:"Central node."}
+  ],
+  links: [
+    ["ghost-jobs","walmart-exp"],["ghost-jobs","it-ghosts"],["ghost-jobs","algos"],
+    ["ai-sidecar","senses"],["ai-sidecar","unrep"],["ai-sidecar","solnet"],
+    ["democracy","unrep"],["democracy","algos"],["estate","ghost-jobs"],
+    ["solnet","ghost-jobs"],["solnet","democracy"],["solnet","ai-sidecar"]
+  ]
+};
+
+/* ====== SVG LAYERS ====== */
+const svg = document.getElementById("cloud");
+const gLinks = document.getElementById("linksLayer");
+const gNodes = document.getElementById("nodesLayer");
+const W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
+
+/* Node layout w/ gentle drift */
+const nodes = data.nodes.map((n,i)=>({
+  ...n,
+  x: (W*0.18)+(i%5)*160 + Math.random()*40,
+  y: (H*0.22)+Math.floor(i/5)*140 + Math.random()*40,
+  vx:0, vy:0, r: 18 + (n.label.length>22?8:0),
+  phase: Math.random()*Math.PI*2
+}));
+const links = data.links.map(([a,b])=>({source: nodes.find(n=>n.id===a), target: nodes.find(n=>n.id===b)}));
+
+function drawLinks(){
+  gLinks.innerHTML="";
+  for(const l of links){
+    const e=document.createElementNS("http://www.w3.org/2000/svg","path");
+    const mx=(l.source.x+l.target.x)/2, my=(l.source.y+l.target.y)/2 + 12*Math.sin((l.source.x+l.target.x)*0.01);
+    e.setAttribute("d",`M ${l.source.x},${l.source.y} Q ${mx},${my} ${l.target.x},${l.target.y}`);
+    e.setAttribute("class","link");
+    e.setAttribute("stroke-width","1.6"); e.setAttribute("fill","none");
+    gLinks.appendChild(e);
+  }
+}
+
+/* Cloudlet nodes */
+function drawNodes(){
+  gNodes.innerHTML="";
+  for(const n of nodes){
+    const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.setAttribute("class","node");
+
+    // unique radial gradient per node
+    const gid = `grad_${n.id}`;
+    const grad = document.createElementNS("http://www.w3.org/2000/svg","radialGradient");
+    grad.setAttribute("id", gid);
+    grad.setAttribute("href", "#gradBase");
+    const ax = document.createElementNS("http://www.w3.org/2000/svg","animate");
+    ax.setAttribute("attributeName","cx");
+    ax.setAttribute("dur","9s");
+    ax.setAttribute("values","48%;53%;50%;47%;48%");
+    ax.setAttribute("repeatCount","indefinite");
+    const ay = document.createElementNS("http://www.w3.org/2000/svg","animate");
+    ay.setAttribute("attributeName","cy");
+    ay.setAttribute("dur","11s");
+    ay.setAttribute("values","52%;49%;51%;54%;52%");
+    ay.setAttribute("repeatCount","indefinite");
+    grad.appendChild(ax); grad.appendChild(ay);
+    svg.querySelector("defs").appendChild(grad);
+
+    const cloud = document.createElementNS("http://www.w3.org/2000/svg","g");
+    cloud.setAttribute("class","cloud");
+    cloud.setAttribute("filter","url(#gooLight)");
+    const tint = n.color || "#79ffe1";
+    const lobes = 3 + Math.floor(Math.random()*3);
+    for(let i=0;i<lobes;i++){
+      const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      const ang = (i/lobes)*Math.PI*2 + (Math.random()*0.8-0.4);
+      const rad = n.r * (0.75 + Math.random()*0.6);
+      const ox  = Math.cos(ang) * (n.r*0.45);
+      const oy  = Math.sin(ang) * (n.r*0.45);
+      c.setAttribute("cx", n.x + ox);
+      c.setAttribute("cy", n.y + oy);
+      c.setAttribute("r", rad);
+      c.setAttribute("fill", `url(#${gid})`);
+      c.setAttribute("fill-opacity",".9");
+      c.setAttribute("stroke", tint);
+      c.setAttribute("stroke-opacity",".35");
+      c.setAttribute("stroke-width","1.2");
+      cloud.appendChild(c);
+    }
+    const glow = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
+    glow.setAttribute("cx", n.x); glow.setAttribute("cy", n.y);
+    glow.setAttribute("rx", n.r*1.55); glow.setAttribute("ry", n.r*1.1);
+    glow.setAttribute("fill", tint);
+    glow.setAttribute("fill-opacity",".08");
+    cloud.appendChild(glow);
+
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",n.x); t.setAttribute("y",n.y+4);
+    t.setAttribute("text-anchor","middle"); t.setAttribute("class","label");
+    t.textContent = n.label;
+
+    g.addEventListener("mouseenter",()=>{ svg.title = n.blurb; });
+    g.addEventListener("click",()=>{ if(n.url && n.url!=="#") window.open(n.url,'_blank'); });
+
+    let dragging=false, ox=0, oy=0;
+    g.addEventListener("pointerdown",(ev)=>{ dragging=true; ox=ev.clientX; oy=ev.clientY; g.setPointerCapture(ev.pointerId); g.style.cursor="grabbing"; });
+    g.addEventListener("pointermove",(ev)=>{
+      if(!dragging) return;
+      const dx=ev.clientX-ox, dy=ev.clientY-oy; ox=ev.clientX; oy=ev.clientY;
+      n.x = Math.max(n.r, Math.min(W-n.r, n.x+dx));
+      n.y = Math.max(n.r, Math.min(H-n.r, n.y+dy));
+      for(const el of cloud.children){
+        if(el.tagName==="circle"){ el.setAttribute("cx", +el.getAttribute("cx")+dx); el.setAttribute("cy", +el.getAttribute("cy")+dy); }
+        if(el.tagName==="ellipse"){ el.setAttribute("cx", n.x); el.setAttribute("cy", n.y); }
+      }
+      t.setAttribute("x",n.x); t.setAttribute("y",n.y+4);
+      tick(0);
+    });
+    g.addEventListener("pointerup",()=>{ dragging=false; g.style.cursor="grab"; });
+
+    g.appendChild(cloud); g.appendChild(t);
+    gNodes.appendChild(g);
+  }
+}
+
+/* Physics + gentle smoke-like drift via a sinusoidal field */
+function driftField(x,y,t){
+  const f1=0.0025, f2=0.0036;
+  const u = Math.sin(y*f1 + t*0.4) + Math.cos((x+y)*f2 - t*0.3);
+  const v = Math.cos(x*f1 - t*0.35) - Math.sin((x-y)*f2 + t*0.25);
+  return [u*0.35, v*0.35];
+}
+function physics(t){
+  for(const l of links){
+    const dx=l.target.x-l.source.x, dy=l.target.y-l.source.y;
+    const d=Math.hypot(dx,dy)||1; const k=0.02*(d-150);
+    const ax=k*dx/d, ay=k*dy/d;
+    l.source.vx+=ax; l.source.vy+=ay;
+    l.target.vx-=ax; l.target.vy-=ay;
+  }
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i], b=nodes[j], dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1;
+      const min=a.r+b.r+34; if(d<min){ const f=(min-d)/min*.08; const ax=f*dx, ay=f*dy; a.vx-=ax; a.vy-=ay; b.vx+=ax; b.vy+=ay; }
+    }
+  }
+  for(const n of nodes){
+    const [ux,uy]=driftField(n.x,n.y,t/1000);
+    n.vx += ux*0.12; n.vy += uy*0.12;
+    n.vx*=0.9; n.vy*=0.9; n.x+=n.vx; n.y+=n.vy;
+    n.x=Math.max(n.r, Math.min(W-n.r, n.x));
+    n.y=Math.max(n.r, Math.min(H-n.r, n.y));
+  }
+}
+
+/* ====== Dust layer ====== */
+const dust = document.getElementById('dust');
+const dCtx = dust.getContext('2d');
+function resizeCanvas(){
+  dust.width = dust.clientWidth * devicePixelRatio;
+  dust.height= dust.clientHeight* devicePixelRatio;
+  dCtx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+addEventListener('resize', resizeCanvas); resizeCanvas();
+
+const PARTICLES = 220;
+const dots = new Array(PARTICLES).fill(0).map(()=>({
+  x: Math.random()*dust.clientWidth,
+  y: Math.random()*dust.clientHeight,
+  s: Math.random()*1.2 + .4,
+  a: Math.random()*0.35 + 0.15
+}));
+function dustField(x,y,t){
+  const f=0.0021, g=0.0031;
+  const u = Math.sin(y*f + t*0.35) + Math.cos((x+y)*g - t*0.22);
+  const v = Math.cos(x*f - t*0.28) - Math.sin((x-y)*g + t*0.18);
+  return [u, v];
+}
+function renderDust(t){
+  dCtx.fillStyle = "rgba(8,12,16,0.085)";
+  dCtx.fillRect(0,0,dust.clientWidth,dust.clientHeight);
+  dCtx.save();
+  dCtx.globalCompositeOperation = "lighter";
+  for(const p of dots){
+    const [ux,uy]=dustField(p.x,p.y,t/1000);
+    p.x += ux*0.6; p.y += uy*0.6;
+    if(p.x<0) p.x+=dust.clientWidth; if(p.x>dust.clientWidth) p.x-=dust.clientWidth;
+    if(p.y<0) p.y+=dust.clientHeight; if(p.y>dust.clientHeight) p.y-=dust.clientHeight;
+    dCtx.beginPath(); dCtx.arc(p.x, p.y, p.s, 0, Math.PI*2);
+    dCtx.fillStyle = `rgba(140,180,255,${p.a})`; dCtx.fill();
+  }
+  dCtx.restore();
+}
+
+/* ====== Ticker ====== */
+function tick(settle=1){
+  const t = performance.now();
+  for(let i=0;i<settle;i++) physics(t);
+  drawLinks(); drawNodes();
+  renderDust(t);
+  requestAnimationFrame(()=>tick(1));
+}
+drawLinks(); drawNodes(); tick(40);
+
+/* ====== Filter & Focus ====== */
+const q = document.getElementById('q'); const reset = document.getElementById('reset');
+function applyFilter(term){
+  const t = term.trim().toLowerCase();
+  for(const g of gNodes.children){
+    const text = g.querySelector('text').textContent.toLowerCase();
+    g.style.opacity = (!t || text.includes(t)) ? 1 : .16;
+  }
+  for(const l of gLinks.children){ l.style.opacity = t ? .15 : .55; }
+}
+q.addEventListener('input', e => applyFilter(e.target.value));
+reset.addEventListener('click', ()=>{ q.value=""; applyFilter(""); });
+
+document.getElementById('btnFocusGhost').onclick = (e)=>{ e.preventDefault(); q.value="ghost"; applyFilter("ghost"); };
+document.getElementById('btnFocusDem').onclick   = (e)=>{ e.preventDefault(); q.value="democracy"; applyFilter("democracy"); };
+document.getElementById('btnFocusAI').onclick    = (e)=>{ e.preventDefault(); q.value="ai"; applyFilter("ai"); };
+
+document.getElementById('yr').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

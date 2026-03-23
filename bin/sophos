@@ -1,0 +1,21 @@
+#!/bin/bash
+# _0853RV3R
+
+sudo /opt/sophos-av/bin/savdctl version
+sudo /opt/sophos-av/bin/savdstatus
+
+printf "\nrun check? [y/n] "
+read userinput
+
+if [ "$userinput" = "y" ]
+    then sudo /opt/sophos-av/bin/savdstatus --diagnose
+fi
+
+printf "view log? [y/n] "
+read userinput
+
+if [ "$userinput" = "y" ]
+    then sudo /opt/sophos-av/bin/savlog | less -G
+fi
+
+sudo /opt/sophos-av/bin/savdctl

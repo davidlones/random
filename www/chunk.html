@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Random Chunk</title>
+    
+<style>
+    body {
+        background-color: black;
+        margin: 0;
+        overflow: hidden;
+    }
+    #playButton {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        padding: 10px 20px;
+        color: limegreen;
+        background-color: #333;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+        overflow: hidden;  /* To contain the moving text */
+    }
+    #playButton:active {
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    #playButton span {
+        display: inline-block;
+        transition: transform 0.1s ease;
+    }
+    #playButton:active span {
+        animation: moveText 0.2s ease-in-out infinite;
+    }
+
+    /* Keyframes for moving text animation */
+    @keyframes moveText {
+        0% { transform: translateX(0); }
+        50% { transform: translateX(100px); }
+        100% { transform: translateX(-100px); }
+    }
+</style>
+
+</head>
+<body>
+    <button id="playButton"><span>random_chunk</span></button>
+
+    <audio id="audioPlayer" src="output.mp3" controls hidden></audio>
+
+    <script>
+        let whiteNoise = null;
+        let whiteNoise2 = null;
+
+        function createWhiteNoise(context) {
+            // Create a GainNode to control the volume 
+            var gainNode = context.createGain();
+            gainNode.gain.value = 0.05; // Lower the volume
+
+            // Create a delay node for the echo effect
+            var delay = context.createDelay(4.0);
+            delay.delayTime.value = 2.0;
+
+            // Create a filter for the "creepy" effect
+            var filter = context.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 2000; // Low pass filter
+            
+            // Connect the nodes together
+            gainNode.connect(delay);
+            delay.connect(filter);
+            filter.connect(context.destination);
+
+            // Create the noise buffer
+            var bufferSize = context.sampleRate;
+            var buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+            var output = buffer.getChannelData(0);
+
+            // Fill the buffer with white noise
+            for (var i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            // Create a source node from the noise buffer
+            var whiteNoise = context.createBufferSource();
+            whiteNoise.buffer = buffer;
+
+            // Connect the source node to the gain node
+            whiteNoise.connect(gainNode);
+
+            return whiteNoise;
+        }
+
+        document.getElementById('playButton').addEventListener('click', function() {
+            var audioPlayer = document.getElementById('audioPlayer');
+            var context = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Stop any previously playing white noise
+            if (whiteNoise) {
+                whiteNoise.stop();
+                whiteNoise = null;
+            }
+
+            if (whiteNoise2) {
+                whiteNoise2.stop();
+                whiteNoise2 = null;
+            }
+
+            // Stop any previously playing audio
+            audioPlayer.pause();
+
+            // Create and play white noise
+            whiteNoise = createWhiteNoise(context);
+            whiteNoise.start(context.currentTime);
+            whiteNoise.stop(context.currentTime + 5);
+
+            // Assuming the audio is more than 3 minutes long
+            var audioDuration = audioPlayer.duration;
+
+            // Generate random start time between 0 and audioDuration - 3 minutes
+            var randomStart = Math.random() * (audioDuration - 180);
+            
+            // Set audio start and end time
+            audioPlayer.currentTime = randomStart;
+            var endTime = randomStart + 180;
+
+            // Play the audio after the white noise finishes
+            setTimeout(function() {
+                audioPlayer.play();
+            }, 5000);
+
+            // Play white noise after the audio chunk finishes
+            audioPlayer.addEventListener('timeupdate', function() {
+                if (audioPlayer.currentTime >= endTime) {
+                    audioPlayer.pause();
+
+                    // Create and play more white noise
+                    whiteNoise2 = createWhiteNoise(context);
+                    whiteNoise2.start(context.currentTime);
+                    whiteNoise2.stop(context.currentTime + 5);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

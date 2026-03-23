@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ARCHIVE, INTERRUPTED — Screenplay Log Analytica</title>
+  <meta name="description" content="A static screenplay-log analytica compiled from Apple Music library analytics and playlist narrative." />
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#0f1620;
+      --ink:#d6e2f0;
+      --muted:#92a4b8;
+      --faint:#5f738a;
+      --line:#1f2a3a;
+      --accent:#9ad1ff;
+      --accent2:#ffd18a;
+      --good:#a6f3b0;
+      --warn:#ffd6a6;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: radial-gradient(1000px 600px at 10% 0%, rgba(154,209,255,.12), transparent 55%),
+                  radial-gradient(900px 700px at 90% 20%, rgba(255,209,138,.10), transparent 60%),
+                  var(--bg);
+      color:var(--ink);
+      font-family:var(--sans);
+      line-height:1.45;
+    }
+    a{color:var(--accent); text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    .wrap{max-width:980px; margin:0 auto; padding:32px 18px 64px;}
+    header{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(15,22,32,.95), rgba(15,22,32,.75));
+      border-radius:14px;
+      padding:22px 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .kicker{
+      font-family:var(--mono);
+      color:var(--muted);
+      font-size:12px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    h1{
+      margin:10px 0 6px;
+      font-size:28px;
+      letter-spacing:.02em;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      max-width:70ch;
+    }
+    .meta{
+      margin-top:14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-family:var(--mono);
+      font-size:12px;
+      color:var(--muted);
+    }
+    .pill{
+      border:1px solid var(--line);
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,.15);
+    }
+
+    nav{
+      margin:18px 0 0;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 14px;
+      font-family:var(--mono);
+      font-size:12px;
+    }
+    nav a{color:var(--accent2);}
+    main{margin-top:18px;}
+    section{
+      margin-top:18px;
+      border:1px solid var(--line);
+      background: rgba(15,22,32,.72);
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    section > header{
+      border:none;
+      border-radius:0;
+      background: rgba(0,0,0,.12);
+      box-shadow:none;
+      padding:14px 16px;
+    }
+    section > header h2{
+      margin:0;
+      font-size:15px;
+      font-family:var(--mono);
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:var(--accent);
+    }
+    .content{padding:16px;}
+    .two{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+    @media (min-width: 860px){
+      .two{grid-template-columns:1.05fr .95fr;}
+    }
+
+    .terminal{
+      font-family:var(--mono);
+      font-size:13px;
+      background: rgba(0,0,0,.22);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:14px 14px 10px;
+      overflow:auto;
+      white-space:pre;
+    }
+    .terminal .dim{color:var(--faint);}
+    .terminal .accent{color:var(--accent);}
+    .terminal .good{color:var(--good);}
+    .terminal .warn{color:var(--warn);}
+    .terminal .muted{color:var(--muted);}
+    .callout{
+      border:1px dashed rgba(154,209,255,.35);
+      border-radius:12px;
+      padding:12px 12px;
+      background: rgba(154,209,255,.06);
+      color:var(--ink);
+      font-family:var(--sans);
+    }
+    .callout b{color:var(--accent);}
+    .list{
+      margin:0;
+      padding-left:18px;
+      color:var(--ink);
+    }
+    .small{font-size:13px; color:var(--muted);}
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+    @media (min-width: 720px){
+      .grid{grid-template-columns:1fr 1fr;}
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      background: rgba(0,0,0,.14);
+    }
+    .card h3{
+      margin:0 0 6px;
+      font-family:var(--mono);
+      font-size:13px;
+      color:var(--accent2);
+      letter-spacing:.03em;
+      text-transform:uppercase;
+    }
+    .song{
+      margin:0;
+      padding:0;
+      list-style:none;
+    }
+    .song li{
+      padding:10px 0;
+      border-bottom:1px solid rgba(31,42,58,.65);
+    }
+    .song li:last-child{border-bottom:none;}
+    .song .title{
+      font-family:var(--mono);
+      color:var(--ink);
+      font-size:13px;
+    }
+    .song .note{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    footer{
+      margin-top:18px;
+      color:var(--muted);
+      font-family:var(--mono);
+      font-size:12px;
+      text-align:center;
+      opacity:.95;
+    }
+    .hr{
+      height:1px;
+      background: linear-gradient(90deg, transparent, rgba(154,209,255,.25), transparent);
+      margin:10px 0 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="kicker">Screenplay Log Analytica • Static Document</div>
+      <h1>ARCHIVE, INTERRUPTED</h1>
+      <p class="subtitle">
+        A compiled analytic narrative of your Apple Music library (as a dataset) and a deliberately
+        nonlinear playlist designed to “dock” with your archive rather than flatter it.
+      </p>
+
+      <div class="meta">
+        <span class="pill">Operator: David</span>
+        <span class="pill">System Voice: Sol</span>
+        <span class="pill">Source: My Apple Music Library.csv</span>
+        <span class="pill">Mode: Read-only / Non-destructive</span>
+        <span class="pill">Date: 2026-02-01 (America/Chicago)</span>
+      </div>
+
+      <nav aria-label="Table of contents">
+        <a href="#file"># PROLOGUE — THE FILE</a>
+        <a href="#ingest"># ACT I — INGEST</a>
+        <a href="#shape"># ACT II — SHAPE</a>
+        <a href="#gravity"># ACT III — ALBUM GRAVITY</a>
+        <a href="#breadth"># ACT IV — BREADTH vs DEPTH</a>
+        <a href="#db"># ACT V — DATABASE</a>
+        <a href="#playlist"># ACT VI — PLAYLIST</a>
+        <a href="#songs"># ACT VII — TRACK NOTES</a>
+        <a href="#epilogue"># EPILOGUE</a>
+      </nav>
+    </header>
+
+    <main>
+
+      <section id="file">
+        <header><h2>Prologue — The File</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="CLI prologue">
+$ sol@library-analyzer --input "My Apple Music Library.csv" --mode forensic --narration screenplay
+<span class="dim">--------------------------------------------------------------------------------</span>
+<span class="accent">INT. TERMINAL — NIGHT</span>
+The cursor blinks.
+A CSV file sits open, unassuming. No artwork. No sound. Just rows.
+
+<span class="accent">SOL (V.O.)</span>
+This is not a playlist.
+This is not a recommendation engine.
+This is a record of accumulation.
+
+Loaded without cleanup.
+No normalization.
+No deduplication.
+History preserved exactly as it arrived.
+          </div>
+          <div class="callout">
+            <b>Key framing:</b> This document treats the library as an <i>archive</i>, not as an identity badge.
+            Redundancy isn’t “mess”—it’s evidence of multiple paths: box sets, compilations, remasters, soundtracks.
+            The analysis is designed to respect that.
+          </div>
+        </div>
+      </section>
+
+      <section id="ingest">
+        <header><h2>Act I — Ingestion Without Judgment</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Ingest summary">
+INPUT SUMMARY
+--------------
+Rows (tracks).............. 13,260
+Unique track titles........  8,442
+Unique artists.............  1,995
+Unique albums..............  2,973
+
+Duplicate density.......... ~36%
+
+CAUSES (LIKELY):
+- Box sets
+- Greatest hits compilations
+- Soundtracks
+- Anniversary editions
+- Charity albums
+
+<span class="accent">SOL (V.O.)</span>
+The same song enters the system wearing different clothes.
+You kept them all.
+          </div>
+          <div class="card">
+            <h3>Interpretation</h3>
+            <ul class="list">
+              <li><b>13,260</b> rows is “warehouse,” not “cabinet.”</li>
+              <li><b>~36%</b> duplication suggests <i>context retention</i> rather than aggressive pruning.</li>
+              <li>This dataset measures what exists—not play counts, not recency, not “taste scores.”</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="shape">
+        <header><h2>Act II — The Shape of the Library</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Artist gravity wells">
+TOP ARTISTS BY TRACK COUNT
+-------------------------
+  501  The Beatles
+  387  Glee Cast
+  239  Coldplay
+  203  Trans-Siberian Orchestra
+  196  Maroon 5
+  169  Bee Gees
+  149  Pink Floyd
+  143  Death Cab for Cutie
+  141  Eric Clapton
+  129  Backstreet Boys
+
+<span class="accent">SOL (V.O.)</span>
+The Beatles are not a favorite. They are infrastructure.
+Glee functions as a rapid cover-sampling engine.
+Legacy and pop coexist without hierarchy.
+          </div>
+          <div class="card">
+            <h3>What this implies</h3>
+            <ul class="list">
+              <li>A few “gravity wells,” plus a long tail of exploration.</li>
+              <li>Cover catalogs can act like a genre-index—fast comparative listening.</li>
+              <li>The library is <i>cross-era</i> by construction, not by accident.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="gravity">
+        <header><h2>Act III — Album Gravity</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Top albums by track density">
+ALBUMS WITH MAXIMUM TRACK DENSITY
+--------------------------------
+  215  The Beatles Box Set
+  174  Greatest Hits                 <span class="warn">[metadata title collision]</span>
+   81  The Sound Of Music (50th Anniversary Edition)
+   73  The Ultimate Bee Gees
+   67  The Essential Michael Jackson
+   63  Instant Karma (Amnesty International)
+   61  Old Friends
+   55  Anthology
+   55  Rent (Original Motion Picture Soundtrack)
+   52  The Dark Side of the Moon
+
+<span class="accent">SOL (V.O.)</span>
+Soundtracks matter. Compilations matter.
+Music is treated as cultural artifact, not isolated tracks.
+          </div>
+          <div class="card">
+            <h3>Metadata note</h3>
+            <p class="small">
+              “Greatest Hits” appears as a high-count album title because many unrelated releases share that exact
+              name. In a refined pass, you’d disambiguate by Apple ID / ISRC and/or album-artist.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="breadth">
+        <header><h2>Act IV — Breadth vs Depth</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Album diversity by artist">
+ARTISTS WITH WIDEST ALBUM SPREAD
+-------------------------------
+   28  Glee Cast
+   23  The Beatles
+   21  Patsy Cline
+   16  Sky's Memoirs
+   16  Astropilot
+   16  Bee Gees
+   15  Queen
+   15  Matt Tondut
+   14  LINKIN PARK
+   14  Eric Clapton
+
+<span class="accent">SOL (V.O.)</span>
+Some artists are excavated.
+Others are sampled once and released.
+Curiosity with stamina.
+          </div>
+          <div class="card">
+            <h3>Reading the pattern</h3>
+            <ul class="list">
+              <li><b>Depth</b> shows up as album spread (multiple eras/editions).</li>
+              <li><b>Breadth</b> shows up as artist count (1,995 unique artists).</li>
+              <li>This isn’t “one genre.” It’s an indexed map of contexts.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="db">
+        <header><h2>Act V — The Database (What It Is)</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Database structure">
+CSV COLUMNS OBSERVED
+--------------------
+- Track name
+- Artist name
+- Album
+- Playlist name
+- Type
+- ISRC
+- Apple - id
+
+STRUCTURE
+---------
+- Flat file (non-relational)
+- Text repetition (no normalized artist/album tables)
+- Inventory-style (not play-history)
+
+<span class="accent">SOL (V.O.)</span>
+This is pre-algorithm music ownership.
+An inventory, not a recommendation engine.
+A log of how things arrived.
+          </div>
+          <div class="card">
+            <h3>Implications for analytics</h3>
+            <ul class="list">
+              <li>Counts reflect <b>collection density</b>, not “favorite intensity.”</li>
+              <li>ISRC and Apple ID enable “version-aware” deduplication later.</li>
+              <li>Playlist name lets us see <b>curation behavior</b> (what you group together).</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="playlist">
+        <header><h2>Act VI — Playlist Object: “Archive, Interrupted”</h2></header>
+        <div class="content">
+          <div class="grid">
+            <div class="card">
+              <h3>Design Intent</h3>
+              <ul class="list">
+                <li>Not “smooth flow.” Instead: <b>meaningful adjacency</b>.</li>
+                <li>Canonical anchors disrupted by texture, covers-as-analysis, and late-night drift.</li>
+                <li>Arc: Experiment → Space → Emotion → Politics → Spirit → Body → Memory → Humanity → Motion</li>
+              </ul>
+            </div>
+            <div class="terminal" role="region" aria-label="Playlist listing">
+PLAYLIST: Archive, Interrupted
+------------------------------
+01  The Beatles — Tomorrow Never Knows
+02  Pink Floyd — Echoes
+03  Radiohead — Reckoner
+04  Massive Attack — Angel
+05  Arthur Russell — A Little Lost
+06  Brian Eno — An Ending (Ascent)
+07  Alice Coltrane — Turiya & Ramakrishna
+08  Fela Kuti — Zombie
+09  Can — Halleluwah (Live 1972)
+10  Talk Talk — The Rainbow
+11  Knxwledge — kometostai.ain'treallynootherwaytoputit.roachpowder.
+12  Cocteau Twins — Cherry-Coloured Funk
+13  Portishead — Roads
+14  Burial — Night Bus
+15  J Dilla — Workinonit
+16  Queen — Who Wants to Live Forever
+17  Simon & Garfunkel — The Boxer
+18  Coldplay — Midnight
+19  Trans-Siberian Orchestra — Christmas / Sarajevo 12/24
+20  Bee Gees — Nights on Broadway
+            </div>
+          </div>
+        </div>
+<div class="card">
+  <h3>Canonical Playlist Link</h3>
+  <p class="small">
+    <b>Archive, Interrupted</b> exists as a live object in Apple Music.
+    This document describes its intent and structure; the link below is the
+    authoritative playback instance.
+  </p>
+  <p class="small">
+    ▶ <a href="https://music.apple.com/us/playlist/archive-interrupted/pl.u-4Jv6GIaoXyGL"
+         target="_blank" rel="noopener noreferrer">
+      https://music.apple.com/us/playlist/archive-interrupted/pl.u-4Jv6GIaoXyGL
+    </a>
+  </p>
+  <p class="small">
+    The playlist is designed to be heard linearly at least once, without skipping.
+    Its meaning emerges from adjacency rather than optimization.
+  </p>
+</div>
+      </section>
+
+      <section id="songs">
+        <header><h2>Act VII — Track Notes (Nodes + Edges)</h2></header>
+        <div class="content">
+          <ol class="song">
+            <li>
+              <div class="title">01 — The Beatles — “Tomorrow Never Knows”</div>
+              <div class="note">Bootloader: studio-as-mind. Grants permission for structure to replace narrative.</div>
+            </li>
+            <li>
+              <div class="title">02 — Pink Floyd — “Echoes”</div>
+              <div class="note">Long-form space. Takes the experimental license and stretches it into weather and geology.</div>
+            </li>
+            <li>
+              <div class="title">03 — Radiohead — “Reckoner”</div>
+              <div class="note">Modern emotional precision. Fragility riding complex rhythm; bridges psychedelic to post-digital.</div>
+            </li>
+            <li>
+              <div class="title">04 — Massive Attack — “Angel”</div>
+              <div class="note">Gravity and pressure. Minimalism becomes menace; introspection turns physical.</div>
+            </li>
+            <li>
+              <div class="title">05 — Arthur Russell — “A Little Lost”</div>
+              <div class="note">Human drift. Vulnerability without polish; a soft release valve after “Angel.”</div>
+            </li>
+            <li>
+              <div class="title">06 — Brian Eno — “An Ending (Ascent)”</div>
+              <div class="note">Altitude. Resolution without closure; clears the narrative air.</div>
+            </li>
+            <li>
+              <div class="title">07 — Alice Coltrane — “Turiya &amp; Ramakrishna”</div>
+              <div class="note">Sacred intent. Ambient turns devotional; transcendence assumed, not chased.</div>
+            </li>
+            <li>
+              <div class="title">08 — Fela Kuti — “Zombie”</div>
+              <div class="note">Groove as indictment. Politics embedded in repetition until it can’t be ignored.</div>
+            </li>
+            <li>
+              <div class="title">09 — Can — “Halleluwah (Live 1972)”</div>
+              <div class="note">Motorik insistence. Human beings behaving like systems; groove meets machine logic.</div>
+            </li>
+            <li>
+              <div class="title">10 — Talk Talk — “The Rainbow”</div>
+              <div class="note">Silence as structure. Rhythm learns restraint; reverence replaces propulsion.</div>
+            </li>
+            <li>
+              <div class="title">11 — Knxwledge — “kometostai…”</div>
+              <div class="note">Memory chopped into swing. History compressed into dust, micro-edits, texture.</div>
+            </li>
+            <li>
+              <div class="title">12 — Cocteau Twins — “Cherry-Coloured Funk”</div>
+              <div class="note">Language dissolves into tone. Emotion without translation; voice as instrument.</div>
+            </li>
+            <li>
+              <div class="title">13 — Portishead — “Roads”</div>
+              <div class="note">Bare nerves. Trip-hop without swagger; abstraction collapses into honesty.</div>
+            </li>
+            <li>
+              <div class="title">14 — Burial — “Night Bus”</div>
+              <div class="note">City ghosts. Loneliness after the singer is removed; rain, static, half-voices.</div>
+            </li>
+            <li>
+              <div class="title">15 — J Dilla — “Workinonit”</div>
+              <div class="note">Rehumanization through groove. Imperfection elevated to principle; warmth returns.</div>
+            </li>
+            <li>
+              <div class="title">16 — Queen — “Who Wants to Live Forever”</div>
+              <div class="note">Operatic mortality. Makes explicit what the playlist has implied: time matters.</div>
+            </li>
+            <li>
+              <div class="title">17 — Simon &amp; Garfunkel — “The Boxer”</div>
+              <div class="note">Survival scaled down to one life. Endurance without theatrics; scars as proof.</div>
+            </li>
+            <li>
+              <div class="title">18 — Coldplay — “Midnight”</div>
+              <div class="note">Contemporary hush. Modern tools used sideways; atmosphere returns in digital form.</div>
+            </li>
+            <li>
+              <div class="title">19 — Trans-Siberian Orchestra — “Christmas / Sarajevo 12/24”</div>
+              <div class="note">Sincere melodrama. Classical/rock narrative compression: memory, winter, conflict.</div>
+            </li>
+            <li>
+              <div class="title">20 — Bee Gees — “Nights on Broadway”</div>
+              <div class="note">Ends in motion, not closure. Joy as propulsion; the archive keeps walking.</div>
+            </li>
+          </ol>
+
+          <div class="hr"></div>
+
+          <p class="small" style="margin-top:12px;">
+            <b>Collective connection:</b> The playlist forms a loop where experiment becomes space, space becomes emotion,
+            emotion becomes politics and spirit, spirit returns to the body, the body becomes memory, and memory becomes motion.
+            It mirrors your library’s core logic: meaning emerges from adjacency rather than hierarchy.
+          </p>
+        </div>
+      </section>
+
+      <section id="epilogue">
+        <header><h2>Epilogue — System Status</h2></header>
+        <div class="content two">
+          <div class="terminal" role="region" aria-label="Epilogue CLI">
+SYSTEM STATUS: <span class="good">STABLE</span>
+DATA INTEGRITY: <span class="good">UNTOUCHED</span>
+ARCHIVE STATE: <span class="good">ACTIVE</span>
+
+AVAILABLE NEXT PASSES (NON-DESTRUCTIVE)
+--------------------------------------
+[ ] Conceptual deduplication (song-as-idea, version-aware via ISRC / Apple ID)
+[ ] Compilation vs studio ratio (context profile)
+[ ] Playlist leakage (tracks that exist only within playlists)
+[ ] Artist entropy score (depth vs sampling)
+[ ] Shadow playlists (implied-but-missing tracks)
+
+$ _
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      Generated as a static HTML document • No external dependencies • “Archive, Interrupted”
+    </footer>
+
+  </div>
+</body>
+</html>

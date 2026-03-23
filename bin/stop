@@ -1,0 +1,7 @@
+#!/bin/sh
+# this quits mplayer using a pipe command
+# if placed at the end of rc.local, the video will quit at the end of the booting process
+if [ ! -z $(pidof mplayer) ]; then
+	echo -e "q\n" > /root/videosplash/fifopipe
+	sleep 1
+fi

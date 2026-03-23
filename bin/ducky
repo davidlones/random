@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir ~/ducky/$1
+nano ~/ducky/$1/ducky.txt
+java -jar /Users/davidlones/.bin/duckencode.jar -i ~/ducky/$1/ducky.txt -o ~/ducky/$1/inject.bin

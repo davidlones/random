@@ -1,0 +1,16 @@
+{
+  "posts": [
+    {
+      "id": "hello-world",
+      "title": "Hello World",
+      "date": "2025-11-05",
+      "file": "posts/hello-world.md"
+    },
+    {
+      "id": "mirrorverse",
+      "title": "Mirrorverse Log 01",
+      "date": "2025-11-05",
+      "file": "posts/mirrorverse.html"
+    }
+  ]
+}

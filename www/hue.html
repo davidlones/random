@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Audio Orb v4.2</title>
+
+  <style>
+    html, body { height: 100%; margin: 0; background: #05060a; overflow: hidden; }
+    canvas { display:block; width: 100vw; height: 100vh; }
+
+    .hud{
+      position: fixed; left: 14px; bottom: 14px;
+      font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: rgba(255,255,255,.82);
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 10px 12px; border-radius: 12px;
+      backdrop-filter: blur(8px);
+      max-width: min(520px, calc(100vw - 28px));
+      transition: opacity 500ms ease, transform 600ms ease;
+      will-change: opacity, transform;
+    }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .hud input[type="file"]{ max-width: 320px; }
+    .hint{ opacity:.75 }
+
+    .btn{
+      cursor:pointer; user-select:none;
+      padding: 6px 10px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.9);
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    /* HUD disappears cleanly once playback starts */
+    .hud.hidden{
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="row">
+      <button class="btn" id="playBtn">Play / Resume</button>
+      <button class="btn" id="pauseBtn">Pause</button>
+      <input id="file" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
+    </div>
+    <div class="hint" style="margin-top:8px">
+      Tip: choose an MP3 file, then hit <b>Play / Resume</b> (some browsers require a click to start audio analysis).
+    </div>
+  </div>
+
+  <audio id="a" crossorigin="anonymous" playsinline></audio>
+
+  <script>
+    // ===========================
+    //  AUDIO ORB v4.2
+    //  - Same classic orb look
+    //  - HUD hides forever once playback truly starts
+    //  - Earlier saturation ramp (color arrives sooner as it expands)
+    // ===========================
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    function resize() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width  = Math.floor(innerWidth  * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    addEventListener('resize', resize);
+    resize();
+
+    const hud = document.getElementById('hud');
+    const audioEl = document.getElementById('a');
+    const fileEl = document.getElementById('file');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+
+    let ac, analyser, freq, timeData, srcNode;
+    let started = false;    // audio graph created?
+    let lockedUI = false;   // once true: HUD never returns until refresh
+
+    function hideHUDForever() {
+      if (lockedUI) return;
+      lockedUI = true;
+
+      hud.classList.add('hidden');
+      fileEl.disabled = true; // stops iOS from re-summoning picker focus
+
+      setTimeout(() => {
+        hud.style.display = 'none';
+      }, 700);
+    }
+
+    function ensureAudioGraph() {
+      if (started) return;
+      started = true;
+
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = ac.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.85;
+
+      srcNode = ac.createMediaElementSource(audioEl);
+      srcNode.connect(analyser);
+      analyser.connect(ac.destination);
+
+      freq = new Uint8Array(analyser.frequencyBinCount);
+      timeData = new Uint8Array(analyser.fftSize);
+    }
+
+    // Local file loading
+    fileEl.addEventListener('change', () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      audioEl.src = URL.createObjectURL(f);
+      audioEl.load();
+    });
+
+    playBtn.addEventListener('click', async () => {
+      ensureAudioGraph();
+      if (ac.state !== 'running') await ac.resume();
+
+      try { await audioEl.play(); } catch (e) {}
+      if (!audioEl.paused) hideHUDForever();
+    });
+
+    pauseBtn.addEventListener('click', () => audioEl.pause());
+
+    // If playback starts via OS controls etc.
+    audioEl.addEventListener('play', hideHUDForever);
+
+    // ====== SIGNAL MATH ======
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+    function getAmplitudeRMS() {
+      analyser.getByteTimeDomainData(timeData);
+      let sumSq = 0;
+      for (let i = 0; i < timeData.length; i++) {
+        const v = (timeData[i] - 128) / 128; // -1..1
+        sumSq += v * v;
+      }
+      return Math.sqrt(sumSq / timeData.length);
+    }
+
+    function getBands() {
+      analyser.getByteFrequencyData(freq);
+
+      const n = freq.length;
+      const lowEnd  = Math.floor(n * 0.18);
+      const midEnd  = Math.floor(n * 0.55);
+
+      let low = 0, mid = 0, high = 0;
+      for (let i = 0; i < lowEnd; i++) low += freq[i];
+      for (let i = lowEnd; i < midEnd; i++) mid += freq[i];
+      for (let i = midEnd; i < n; i++) high += freq[i];
+
+      low  /= (lowEnd * 255);
+      mid  /= ((midEnd - lowEnd) * 255);
+      high /= ((n - midEnd) * 255);
+
+      low  = Math.pow(clamp01(low),  0.85);
+      mid  = Math.pow(clamp01(mid),  0.85);
+      high = Math.pow(clamp01(high), 0.85);
+
+      return { low, mid, high };
+    }
+
+    // ====== DRAWING ======
+    let t = 0;
+    function draw() {
+      t += 1;
+
+      const w = innerWidth, h = innerHeight;
+      const cx = w * 0.5, cy = h * 0.5;
+
+      ctx.fillStyle = 'rgba(5,6,10,0.22)';
+      ctx.fillRect(0, 0, w, h);
+
+      if (!started) {
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+        requestAnimationFrame(draw);
+        return;
+      }
+
+      const amp = getAmplitudeRMS();
+      const { low, mid, high } = getBands();
+
+      // Radius
+      const breath = 0.5 + 0.5 * Math.sin(t * 0.02);
+      const ampCurve = Math.pow(clamp01(amp * 2.2), 0.9);
+      const minR = Math.min(w, h) * 0.03;
+      const maxR = Math.min(w, h) * 0.28;
+      const radius = minR + (maxR - minR) * clamp01(ampCurve) + breath * 2;
+
+      // Band-color target
+      const mag = Math.max(0.001, low + mid + high);
+      const r0 = low / mag;
+      const g0 = mid / mag;
+      const b0 = high / mag;
+
+      // v4.2: saturation arrives sooner (earlier ramp to band-color)
+      let colorMix = clamp01((ampCurve - 0.06) / 0.55);
+      colorMix = Math.pow(colorMix, 0.45);
+
+      const r = (1 - colorMix) * 1.0 + colorMix * r0;
+      const g = (1 - colorMix) * 1.0 + colorMix * g0;
+      const b = (1 - colorMix) * 1.0 + colorMix * b0;
+
+      const coreBright = 0.95;
+      const haloBright = 0.55 + 0.35 * (1 - clamp01(ampCurve));
+
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      const core = `rgba(${Math.round(255 * coreBright)},${Math.round(255 * coreBright)},${Math.round(255 * coreBright)},1)`;
+      const midC = `rgba(${Math.round(255 * r)},${Math.round(255 * g)},${Math.round(255 * b)},0.92)`; // slightly richer
+      const edge = `rgba(${Math.round(255 * r)},${Math.round(255 * g)},${Math.round(255 * b)},0.0)`;
+
+      grad.addColorStop(0.00, core);
+      grad.addColorStop(0.22, core);
+      grad.addColorStop(0.55, midC);
+      grad.addColorStop(1.00, edge);
+
+      const haloR = radius * (1.6 + ampCurve * 1.2);
+      const halo = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, haloR);
+      halo.addColorStop(0.00, `rgba(${Math.round(255 * r)},${Math.round(255 * g)},${Math.round(255 * b)},${0.35 * haloBright})`);
+      halo.addColorStop(1.00, `rgba(${Math.round(255 * r)},${Math.round(255 * g)},${Math.round(255 * b)},0)`);
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(cx, cy, haloR, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+
+      const hlR = radius * 0.22;
+      const hx = cx - radius * 0.25;
+      const hy = cy - radius * 0.25;
+      const hl = ctx.createRadialGradient(hx, hy, 0, hx, hy, hlR);
+      hl.addColorStop(0, 'rgba(255,255,255,0.55)');
+      hl.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = hl;
+      ctx.beginPath(); ctx.arc(hx, hy, hlR, 0, Math.PI * 2); ctx.fill();
+
+      ctx.globalCompositeOperation = 'source-over';
+      requestAnimationFrame(draw);
+    }
+
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>

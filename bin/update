@@ -1,0 +1,19 @@
+#!/bin/bash
+
+timestamp() {
+    date +"[%m/%d/%Y %I:%M:%S %p]"
+}
+
+# Ask for sudo once
+sudo -v || exit 1
+
+echo "$(timestamp) Stopping PackageKit, if running..."
+sudo systemctl stop packagekit
+
+echo "$(timestamp) Updating package lists..."
+sudo apt update
+
+echo "$(timestamp) Upgrading packages..."
+sudo apt upgrade
+
+echo "$(timestamp) done."

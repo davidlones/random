@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deer Valley Rd / Tucker – 10-Day Forecast</title>
+<style>
+:root{
+  --bg:#08101e;
+  --panel:#0f1f38;
+  --panel2:#142a4d;
+  --ink:#eef4ff;
+  --muted:#b7c7e8;
+  --accent:#58a6ff;
+  --cold:#7dd3fc;
+  --ice:#a5b4fc;
+  --warn:#fbbf24;
+  --danger:#ef4444;
+  --extreme:#a855f7;
+  --divider:#223a63;
+  --ok:#22c55e;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:var(--sans);
+  background:linear-gradient(180deg,#061022,#08101e 40%);
+  color:var(--ink);
+}
+header{
+  background:linear-gradient(180deg,#0b1d3a,#102a52);
+  padding:14px 16px 10px;
+  border-bottom:2px solid var(--divider);
+}
+header .station{
+  font-weight:800; letter-spacing:.06em; font-size:12px; color:var(--cold);
+}
+header h1{margin:6px 0 2px; font-size:20px}
+header .sub{font-size:13px; color:var(--muted)}
+
+/* alert bar */
+.alert{
+  background:linear-gradient(90deg,#4c1d95,#7c3aed);
+  color:#fff;
+  padding:10px 14px;
+  font-weight:800;
+  font-size:13px;
+  letter-spacing:.02em;
+}
+.alert small{
+  display:block;
+  font-weight:600;
+  opacity:.9;
+  margin-top:4px;
+}
+
+/* now panel */
+.now{
+  margin:12px;
+  background:linear-gradient(180deg,#122b55,#0b1a33);
+  border:1px solid var(--divider);
+  border-radius:14px;
+  overflow:hidden;
+}
+.now-head{
+  padding:10px 12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  border-bottom:1px solid var(--divider);
+}
+.now-head .left{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.now-head .kicker{
+  font-size:12px;
+  letter-spacing:.08em;
+  font-weight:900;
+  color:var(--cold);
+}
+.now-head .time{
+  font-family:var(--mono);
+  color:var(--muted);
+  font-size:12px;
+}
+.now-body{
+  padding:12px;
+  display:grid;
+  grid-template-columns:72px 1fr;
+  gap:10px;
+}
+.now .icon{
+  font-size:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.35));
+}
+.now .stats{
+  font-family:var(--mono);
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+.now .stats b{color:var(--cold)}
+.now .tags{
+  margin-top:8px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.badge{
+  display:inline-block;
+  padding:2px 8px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* grid */
+main{
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+@media(min-width:700px){ main{display:grid; grid-template-columns:1fr 1fr} }
+@media(min-width:1050px){ main{grid-template-columns:repeat(3,1fr)} }
+
+/* day card */
+.day{
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid var(--divider);
+}
+.day-head{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  padding:10px 12px;
+  background:#122b55;
+  border-bottom:1px solid var(--divider);
+}
+.day-name{font-weight:900; font-size:14px; letter-spacing:.03em}
+.day-temps{
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--cold);
+}
+.day-body{
+  display:grid;
+  grid-template-columns:72px 1fr;
+  gap:10px;
+  padding:12px;
+}
+.icon{
+  font-size:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.35));
+}
+.summary{font-size:14px}
+.summary b{color:var(--cold)}
+.meta{
+  margin-top:6px;
+  font-size:12px;
+  color:var(--muted);
+  font-family:var(--mono);
+}
+.road{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 12px;
+  font-size:13px;
+  background:#0b1a33;
+  border-top:1px solid var(--divider);
+}
+.risk{font-weight:900; letter-spacing:.06em}
+.risk.mod{color:var(--warn)}
+.risk.high{color:var(--danger)}
+.risk.extreme{color:var(--extreme)}
+.risk.low{color:var(--ok)}
+
+/* screenplay log block */
+.log{
+  margin:12px;
+  border:1px solid var(--divider);
+  border-radius:14px;
+  overflow:hidden;
+  background:linear-gradient(180deg,#0b1a33,#071026);
+}
+.log summary{
+  cursor:pointer;
+  padding:12px 14px;
+  font-weight:900;
+  letter-spacing:.06em;
+  font-size:12px;
+  color:var(--ice);
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  user-select:none;
+}
+.log summary::-webkit-details-marker{display:none}
+.log .hint{
+  font-family:var(--mono);
+  font-weight:700;
+  color:var(--muted);
+  opacity:.9;
+  font-size:12px;
+}
+.log .body{
+  padding:12px 14px 14px;
+  border-top:1px solid var(--divider);
+  font-family:var(--mono);
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+}
+.log .body b{color:var(--cold)}
+.log .body .title{
+  font-family:var(--sans);
+  color:var(--ink);
+  font-weight:900;
+  font-size:14px;
+  margin:0 0 6px;
+}
+.log .body .slug{
+  font-family:var(--mono);
+  color:var(--ice);
+  font-weight:900;
+  letter-spacing:.08em;
+  margin:0 0 10px;
+}
+hr.sep{
+  border:none;
+  border-top:1px solid rgba(255,255,255,.10);
+  margin:10px 0;
+}
+
+/* crawl */
+.crawl{
+  margin:6px 12px 14px;
+  background:#071026;
+  border:1px solid var(--divider);
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:12px;
+  color:var(--muted);
+  font-family:var(--mono);
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="station">WEATHER BRIEF • PARKER COUNTY • HILL / RURAL ROADS</div>
+  <h1>Deer Valley Rd / Tucker</h1>
+  <div class="sub">Updated 10-Day Weather & Road Conditions • Two-Wave Winter Event + Hard Freeze Tail</div>
+</header>
+
+<div class="alert">
+  ❄️ WINTER STORM CONDITIONS — ICE & SLEET DRIVE THE IMPACTS
+  <small>Updated: two waves (Fri night→Sat, then Sat night→Sun) + coldest mornings may be Mon/Tue</small>
+</div>
+
+<!-- NOW / LIVE SNAPSHOT (FRI 10:25 AM) -->
+<section class="now" aria-label="Current snapshot">
+  <div class="now-head">
+    <div class="left">
+      <div class="kicker">NOW — WEATHERFORD (FRI)</div>
+      <div class="time">As observed: 10:25 AM • Light rain ongoing</div>
+    </div>
+    <span class="badge">NWS: Winter Storm Warning</span>
+  </div>
+  <div class="now-body">
+    <div class="icon">🌧️</div>
+    <div>
+      <div class="stats">
+        Temp: <b>49°F</b> • Feels like: <b>37°F</b><br>
+        Wind: <b>14 mph</b> • Gusts: <b>22 mph</b> (NE)<br>
+        Humidity: <b>89%</b> • Dew point: <b>46°F</b><br>
+        Visibility: <b>4 mi</b> • Pressure: <b>30.19 inHg</b> (rising)
+      </div>
+      <div class="tags">
+        <span class="badge">Pre-glaze risk: rain first</span>
+        <span class="badge">Rural hills: freeze early / thaw late</span>
+        <span class="badge">Bridges + shade = persistent traps</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENPLAY LOG (INCORPORATED IN FULL) -->
+<details class="log" open>
+  <summary>
+    SCREENPLAY LOG — “PRE-GLAZE”
+    <span class="hint">tap to collapse / expand</span>
+  </summary>
+  <div class="body">
+    <p class="title">Weatherford, TX • Friday Morning • The system is already straining</p>
+    <p class="slug">INT. PHONE SCREEN — 10:25 AM</p>
+
+    <div>Slate-gray blur. Rain streaks across glass like static.</div>
+    <div>Notifications stack faster than they can be read.</div>
+
+    <hr class="sep">
+
+    <div><b>TIME SENSITIVE.</b></div>
+    <div><b>BREAKING NEWS.</b></div>
+    <div><b>WINTER STORM WARNING.</b></div>
+
+    <hr class="sep">
+
+    <div>Political headlines jostle for attention with weather alerts, all rendered equal by the phone’s indifference.</div>
+    <div>The storm does not care who is arguing. The cold does not wait its turn.</div>
+
+    <hr class="sep">
+
+    <div><b>CUT TO: WEATHER APP</b></div>
+    <div><b>49°.</b> Feels like <b>37°.</b></div>
+    <div>Rain icon. <b>100%</b>.</div>
+
+    <div style="margin-top:10px;">A ten-day forecast collapses the future into bars and numbers:</div>
+    <div><b>33°.</b></div>
+    <div><b>18°.</b></div>
+    <div><b>13°.</b></div>
+    <div><b>9°.</b></div>
+
+    <div style="margin-top:10px;">The color drains colder with each swipe.</div>
+
+    <div style="margin-top:10px;"><b>NARRATOR (V.O.)</b></div>
+    <div>The important detail is not the snowflake icon.</div>
+    <div>It’s the rain that comes first.</div>
+
+    <hr class="sep">
+
+    <div><b>CUT TO: DATA TILES</b></div>
+    <div>Humidity: <b>89%</b></div>
+    <div>Dew point: <b>46°</b></div>
+    <div>Pressure: <b>30.19 inHg — rising</b></div>
+
+    <div style="margin-top:10px;">The atmosphere is full. Heavy. Loaded.</div>
+    <div>Water is already where ice wants to be.</div>
+
+    <hr class="sep">
+
+    <div><b>EXT. RURAL NORTH TEXAS — IMAGINED</b></div>
+    <div>Deer Valley Road.</div>
+    <div>Tucker.</div>
+
+    <div style="margin-top:10px;">Hills that don’t look like hills until you’re on them.</div>
+    <div>Curves that never see sun in winter.</div>
+    <div>Asphalt that remembers every freeze.</div>
+
+    <div style="margin-top:10px;">Rain seeps into cracks, shoulders, low spots.</div>
+    <div>No plows. No pretreatment.</div>
+    <div>Just gravity and shade doing what they’ve always done.</div>
+
+    <hr class="sep">
+
+    <div><b>CUT TO: NOTIFICATION CENTER</b></div>
+    <div>“Winter Storm Warning — NWS”</div>
+    <div>“Record cold temperatures will hit much of the U.S.”</div>
+    <div>“Electricity prices surge.”</div>
+
+    <div style="margin-top:10px;">The storm is no longer hypothetical.</div>
+    <div>Institutions notice <b>after</b> the water falls.</div>
+
+    <hr class="sep">
+
+    <div><b>INT. GROCERY BACK ROOM — TEXT THREAD</b></div>
+    <div>A photo: a handheld device, red numbers climbing.</div>
+
+    <div style="margin-top:10px;">“Water and dairy are pretty wiped.”</div>
+
+    <div style="margin-top:10px;">Another message, later:</div>
+    <div>“We have over 4k picks in the system and we’re out of totes so I can’t pick. Like what’s the point?”</div>
+
+    <div style="margin-top:10px;">Silence between messages stretches longer than it should.</div>
+
+    <div style="margin-top:10px;"><b>NARRATOR (V.O.)</b></div>
+    <div>Supply chains don’t break in dramatic explosions.</div>
+    <div>They gum up.</div>
+    <div>They stall.</div>
+    <div>They wait for plastic bins that never arrive.</div>
+
+    <hr class="sep">
+
+    <div><b>CUT TO: PHONE — SENT MESSAGE</b></div>
+    <div>“Still alive?”</div>
+    <div>“How you doing up there?”</div>
+
+    <div style="margin-top:10px;">Read receipts lag behind reality.</div>
+
+    <hr class="sep">
+
+    <div><b>EXT. WEATHERFORD — CONTINUOUS</b></div>
+    <div>Rain continues.</div>
+    <div>Temperature ticks down by single degrees that matter more than inches of snow ever will.</div>
+
+    <div style="margin-top:10px;">Tonight, the rain stops being rain.</div>
+    <div>The road does not change color.</div>
+    <div>The danger does not announce itself.</div>
+
+    <div style="margin-top:10px;"><b>NARRATOR (V.O.)</b></div>
+    <div>This is the <b>pre-glaze phase</b>.</div>
+    <div>The quiet part people forget to fear.</div>
+
+    <div style="margin-top:10px;">By morning, the hills will decide who moves and who doesn’t.</div>
+    <div>By Sunday, the cold will outlast the headlines.</div>
+    <div>By Monday, the system will still be counting losses in hours and slips and unread messages.</div>
+
+    <hr class="sep">
+
+    <div><b>FADE OUT</b></div>
+    <div>A final weather tile lingers:</div>
+    <div><b>MONDAY — 9° — SUNNY</b></div>
+
+    <div style="margin-top:10px;">Sunlight, at last.</div>
+    <div>Too late to melt what already hardened.</div>
+  </div>
+</details>
+
+<main>
+
+  <!-- THU (SETUP) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">THU (SETUP DAY)</div>
+      <div class="day-temps">MILD → TURNING</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌥️</div>
+      <div class="summary">
+        Calm before the mischief. Prep day: fuel, charge, groceries, traction supplies.
+        Rural roads won’t get “ahead” of this.
+        <div class="meta">Confidence: HIGH (pattern), specifics: LOW</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk low">LOW</span></div>
+  </section>
+
+  <!-- FRI -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">FRIDAY</div>
+      <div class="day-temps">RAIN → FREEZING FAST</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌧️➡️🧊</div>
+      <div class="summary">
+        Arctic front arrives; rain increases, then the freezing line drops south.
+        Transition to <b>freezing rain / sleet</b> begins late day into evening.
+        <div class="meta">Key variable: front timing (controls when roads glaze)</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk mod">MOD–HIGH</span></div>
+  </section>
+
+  <!-- FRI NIGHT (WAVE 1) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">FRI NIGHT (WAVE 1)</div>
+      <div class="day-temps">BELOW FREEZING</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🧊🌨️</div>
+      <div class="summary">
+        First wave: <b>freezing rain + sleet</b> (some snow mixed). Ice forms easiest once temps drop under 28°F.
+        <div class="meta">Terrain note: dips + shaded grades ice first, thaw last</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk high">VERY HIGH</span></div>
+  </section>
+
+  <!-- SAT (WAVE 1 CONT.) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">SATURDAY (WAVE 1 CONT.)</div>
+      <div class="day-temps">20s (ALL DAY)</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌨️💨</div>
+      <div class="summary">
+        Wintry mix continues (often sleet dominant). Wind + cold = no melt.
+        Even light new precip worsens traction because the base layer is already there.
+        <div class="meta">Confidence: HIGH (impact), type split: MED</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk high">VERY HIGH</span></div>
+  </section>
+
+  <!-- SAT EVE (LULL) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">SAT EVE (POSSIBLE LULL)</div>
+      <div class="day-temps">STILL < 32°F</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">⏸️🧊</div>
+      <div class="summary">
+        Possible break in precip — but roads stay frozen. This is the fake “all clear.”
+        <div class="meta">If you must move, this is the least-bad window — still risky</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk mod">HIGH</span></div>
+  </section>
+
+  <!-- SAT NIGHT (WAVE 2) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">SAT NIGHT (WAVE 2)</div>
+      <div class="day-temps">TEENS → SINGLE DIGITS</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🧊❄️</div>
+      <div class="summary">
+        Second wave arrives. Additional sleet/snow/freezing rain on top of ice pack.
+        Then <b>hard refreeze</b> as temps crash.
+        <div class="meta">This is where “it stopped precipitating” ≠ “it’s safe”</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk extreme">EXTREME</span></div>
+  </section>
+
+  <!-- SUN -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">SUNDAY</div>
+      <div class="day-temps">20s / TEENS</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">☀️🧊</div>
+      <div class="summary">
+        Some clearing possible, but ice persists — especially shaded curves, creek dips, bridges.
+        Any brief sun-driven melt becomes tonight’s black ice.
+        <div class="meta">Confidence: HIGH (cold + refreeze), melt: LOW</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk high">VERY HIGH</span></div>
+  </section>
+
+  <!-- MON (COLDEST MORNING LIKELY) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">MONDAY</div>
+      <div class="day-temps">COLDEST AM? • HARD FREEZE</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🥶🧊</div>
+      <div class="summary">
+        Morning may be the coldest. Even if the sun is out, temps may only flirt with freezing briefly.
+        Expect widespread refreeze after sunset.
+        <div class="meta">Road threat shifts: “everywhere” → “trap spots” (shade + dips)</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk high">HIGH</span></div>
+  </section>
+
+  <!-- TUE (COLDEST MORNING POSSIBLE) -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">TUESDAY</div>
+      <div class="day-temps">HARD FREEZE AM • SLOW THAW PM</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌤️🧊</div>
+      <div class="summary">
+        Another brutally cold morning possible. Afternoon thaw is incremental.
+        Watch for water running into low spots, then freezing at night.
+        <div class="meta">Confidence: HIGH (refreeze), thaw rate: MED</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk mod">MOD–HIGH</span></div>
+  </section>
+
+  <!-- WED -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">WEDNESDAY</div>
+      <div class="day-temps">THAW TRENDS</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌥️💧</div>
+      <div class="summary">
+        Gradual improvement. Remaining hazards concentrate in shaded hollows, bridge decks, and north-facing slopes.
+        <div class="meta">Road hazard becomes “patchy but nasty”</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk mod">MODERATE</span></div>
+  </section>
+
+  <!-- THU -->
+  <section class="day">
+    <div class="day-head">
+      <div class="day-name">THURSDAY</div>
+      <div class="day-temps">BETTER (NOT PERFECT)</div>
+    </div>
+    <div class="day-body">
+      <div class="icon">🌤️✅</div>
+      <div class="summary">
+        If the warming trend holds, most routes improve. Expect mud/soft shoulders where meltwater loosened edges.
+        <div class="meta">Confidence: MED (depends on how long temps stay above freezing)</div>
+      </div>
+    </div>
+    <div class="road"><span>Road Conditions</span><span class="risk mod">LOW–MOD</span></div>
+  </section>
+
+</main>
+
+<div class="crawl">
+  <span class="badge">KEY TAKEAWAY</span>
+  ICE & SLEET set the travel impacts • Two precip waves (Fri night→Sat, Sat night→Sun) • Coldest mornings may be Mon/Tue • Rural hills freeze earlier + thaw later • Avoid stopping on inclines • Bridges/dips/shade = persistent black ice
+</div>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+Project status overview.
+MasterBot has evolved from a simple Discord bot into a persistent, multi-channel runtime console.
+Its deterministic core owns state progression, render cadence, telemetry refresh, reaction handling, and message edit pacing.
+Pinned console messages now run across multiple channels with a stable emoji control surface.
+Controls are treated as interrupt inputs with queueing, debounce, priority, cleanup, and self-healing reaction maintenance.
+Console frames combine animation, runtime context, telemetry, voice stream taps, and an analyst panel.
+Verbose and clear modes change display density without destroying state.
+Refresh and reboot flows are now graceful operational transitions with countdown and staged phases.
+LLM integration runs through a bounded bus with strict output limits, cooldown, cache, and deterministic fallback behavior.
+The LLM provides narration and operator analysis, but does not drive control timing.
+Manual memory and analyst actions can summarize channel history and recent logs with timeout and rate-limit safeguards.
+Telemetry extends beyond host metrics into Home Assistant and Apollo sensors for environmental and occupancy-style signals.
+Runtime channel bindings, pinned message IDs, voice presets, and Deer Valley visitor-role policy are persisted in database-backed runtime config.
+In short: deterministic core, bounded AI commentary, persistent shared console controls, live sensor input, and restart resilience.

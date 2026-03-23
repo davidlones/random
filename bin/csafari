@@ -1,0 +1,4 @@
+#!/bin/bash
+
+osascript -e "tell app \"Safari\" to close every window
+beep"

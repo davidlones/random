@@ -1,0 +1,3 @@
+#!/bin/bash
+clear
+for n in {1..45}; do echo ""; done

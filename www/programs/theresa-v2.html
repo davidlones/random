@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SORRENTO-2007 Pseudo-Blockchain Contract Ledger (with Guide)</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 18px; font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    h1,h2,h3 { margin: 0 0 10px 0; font-weight: 800; }
+    h3 { margin-top: 14px; }
+    .muted { color:#a8a8a8; }
+    .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width: 1080px){ .grid { grid-template-columns: 460px 1fr; } }
+    .panel { border: 1px solid #2a2a2a; border-radius: 10px; padding: 12px; background: #0f0f10; }
+    label { display:block; margin: 8px 0 4px; color:#bdbdbd; }
+    input, textarea, button, select {
+      width: 100%; box-sizing: border-box;
+      background:#111; color:#eaeaea;
+      border:1px solid #2a2a2a; border-radius:8px;
+      padding: 10px;
+      font: inherit;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { display:flex; gap:10px; }
+    .row > * { flex:1; }
+    button { cursor:pointer; }
+    button.primary { background:#1a1a1a; border-color:#3a3a3a; }
+    button.secondary { background:#141414; border-color:#2f2f2f; }
+    button.danger { background:#2a1212; border-color:#6a2a2a; }
+    .kpi { display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi div { border:1px dashed #2a2a2a; border-radius:10px; padding:10px; }
+    .kpi .big { font-size: 18px; font-weight: 900; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding: 8px; border-bottom: 1px solid #222; vertical-align: top; }
+    th { text-align:left; color:#bdbdbd; font-weight:800; position: sticky; top: 0; background: #0f0f10; }
+    code { color:#e6e6e6; }
+    .hash { word-break: break-all; font-size: 12px; color:#cfcfcf; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #333; border-radius: 999px; color:#ddd; }
+    .tip, .warn {
+      border: 1px solid #2a2a2a;
+      border-left-width: 5px;
+      border-radius: 10px;
+      padding: 10px;
+      background: #0b0b0c;
+      margin-top: 10px;
+    }
+    .tip { border-left-color: #2f6f2f; }
+    .warn { border-left-color: #7a4a1a; }
+    .tiny { font-size: 12px; }
+    details { border: 1px solid #222; border-radius: 10px; padding: 10px; background:#0b0b0c; margin-top: 10px; }
+    summary { cursor: pointer; color:#ddd; font-weight: 800; }
+    hr { border:0; border-top: 1px solid #222; margin: 12px 0; }
+    .footer { margin-top: 12px; color:#9a9a9a; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>⛓️ SORRENTO-2007 PSEUDO-BLOCKCHAIN CONTRACT LEDGER</h1>
+  <div class="muted">
+    This is a <b>local-only</b> HTML “ledger” that helps you track payments like a mini blockchain.
+    It stores data in your browser (<code>localStorage</code>), and you can <b>Export/Import JSON</b> for backups or manual edits.
+  </div>
+
+  <div class="tip">
+    <b>How this works (in one sentence):</b> the balance is computed as<br/>
+    <code>Balance = Sale Price − (Tow Deductions) − (Payments)</code>.
+  </div>
+
+  <details open>
+    <summary>Quick Start (2 minutes)</summary>
+    <div style="margin-top:10px;">
+      <ol>
+        <li>Fill in <b>Seller</b>, <b>Buyer</b>, and confirm <b>Sale Price</b> and <b>Monthly Payment</b>.</li>
+        <li>Tap <b>Save Contract</b> (this records a <span class="pill">CONTRACT_UPDATE</span> block so changes are auditable).</li>
+        <li>If you paid a tow bill, add a <span class="pill">TOW_DEDUCTION</span> block for that amount.</li>
+        <li>Each month, add a <span class="pill">PAYMENT</span> block (e.g., $300).</li>
+        <li>Use <b>Export JSON</b> occasionally to keep a backup file somewhere safe.</li>
+      </ol>
+      <div class="warn tiny">
+        <b>Important:</b> this is not a legal blockchain or a court-grade contract system. It’s a clear, structured “receipt trail”
+        that makes it hard to lose track of who paid what and when.
+      </div>
+    </div>
+  </details>
+
+  <div class="grid" style="margin-top:14px;">
+    <!-- LEFT: INPUTS -->
+    <div class="panel">
+      <h2>1) Contract Details</h2>
+      <div class="muted tiny">
+        This section describes the agreement terms. You can edit later; updates get their own block.
+      </div>
+
+      <label>Contract ID</label>
+      <input id="contractId" />
+
+      <div class="row">
+        <div>
+          <label>Seller</label>
+          <input id="seller" placeholder="Seller name" />
+        </div>
+        <div>
+          <label>Buyer</label>
+          <input id="buyer" placeholder="Buyer name" />
+        </div>
+      </div>
+
+      <label>Vehicle</label>
+      <input id="vehicle" />
+
+      <div class="row">
+        <div>
+          <label>Sale Price (USD)</label>
+          <input id="salePrice" type="number" step="0.01" />
+        </div>
+        <div>
+          <label>Monthly Payment (USD)</label>
+          <input id="monthlyPayment" type="number" step="0.01" />
+        </div>
+      </div>
+
+      <label>Agreement Text (editable)</label>
+      <textarea id="agreementText"></textarea>
+
+      <div class="tip tiny">
+        <b>Tip:</b> Put the “title transfer halfway through” and “inspection/registration decided later” in the agreement text.
+        Then record actual events later using <span class="pill">TITLE_TRANSFER</span> and <span class="pill">FEE_DECISION</span> blocks.
+      </div>
+
+      <hr />
+
+      <h2>2) Add a Ledger Block</h2>
+      <div class="muted tiny">
+        Think of each block as an entry in a notebook. The “hash chain” makes it obvious if anything in the middle changed.
+      </div>
+
+      <label>Block Type</label>
+      <select id="entryType">
+        <option value="PAYMENT">PAYMENT (money paid toward the balance)</option>
+        <option value="TOW_DEDUCTION">TOW_DEDUCTION (tow cost subtracted from total due)</option>
+        <option value="NOTE">NOTE (no money, just documentation)</option>
+        <option value="TITLE_TRANSFER">TITLE_TRANSFER (record when title is handled)</option>
+        <option value="FEE_DECISION">FEE_DECISION (inspection/registration decision)</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Amount (USD)</label>
+          <input id="entryAmount" type="number" step="0.01" placeholder="PAYMENT/TOW only. Example: 300" />
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="entryDate" type="date" />
+        </div>
+      </div>
+
+      <label>Memo (what happened?)</label>
+      <textarea id="entryMemo" placeholder="Example: 'January payment received via CashApp' or 'Tow bill deducted: AAA flatbed'"></textarea>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="addEntryBtn">Append Block</button>
+        <button class="secondary" id="saveContractBtn">Save Contract</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="exportBtn">Export JSON (Backup)</button>
+        <button id="importBtn">Import JSON (Restore/Edit)</button>
+      </div>
+
+      <details>
+        <summary>Guide: What each block type means</summary>
+        <div class="tiny" style="margin-top:10px;">
+          <p><span class="pill">PAYMENT</span> — Reduces the balance. Usually $300, final payment might be smaller.</p>
+          <p><span class="pill">TOW_DEDUCTION</span> — Also reduces the balance because it is deducted from the $1,300 total owed.</p>
+          <p><span class="pill">NOTE</span> — Adds context without changing money (e.g., “mechanic says starter replaced”).</p>
+          <p><span class="pill">TITLE_TRANSFER</span> — Record when you actually hand over title / sign paperwork.</p>
+          <p><span class="pill">FEE_DECISION</span> — When you decide who pays inspection, registration, etc., document it here.</p>
+        </div>
+      </details>
+
+      <button class="danger" id="resetBtn" style="margin-top:10px;">Reset Ledger (local only)</button>
+
+      <div class="footer">
+        <b>Privacy note:</b> This file doesn’t send data anywhere. Export the JSON if you want a shareable copy.
+      </div>
+    </div>
+
+    <!-- RIGHT: OUTPUTS -->
+    <div class="panel">
+      <h2>Contract Status</h2>
+      <div class="muted tiny">
+        Totals are computed from blocks in the chain, not from your memory (sadly, a scarce resource).
+      </div>
+
+      <div class="kpi" style="margin-top:10px;">
+        <div>
+          <div class="muted">Starting Price</div>
+          <div class="big" id="kpiPrice">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Balance Due</div>
+          <div class="big" id="kpiBalance">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Payments Total</div>
+          <div class="big" id="kpiPaid">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Deductions Total</div>
+          <div class="big" id="kpiDeduct">$0.00</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;" class="muted">
+        Contract ID: <span class="pill" id="kpiContractId">—</span>
+      </div>
+
+      <hr />
+
+      <h2>Chain Health</h2>
+      <div class="muted tiny" id="chainMeta"></div>
+
+      <details>
+        <summary>What “Chain Health” means</summary>
+        <div class="tiny" style="margin-top:10px;">
+          <p>
+            Each block contains a <b>hash</b> (a fingerprint) of its own content and the <b>previous block’s hash</b>.
+            If you edit an older block, the fingerprints no longer match, and the chain will show as <b>BROKEN</b>.
+          </p>
+          <p>
+            This is not military-grade security. It’s a strong “tamper-evidence” system for accidental changes and clean recordkeeping.
+          </p>
+        </div>
+      </details>
+
+      <hr />
+
+      <h2>Ledger (Blocks)</h2>
+      <div class="muted tiny">
+        The table is your timeline. A tow deduction and payments will automatically change totals above.
+      </div>
+
+      <div style="overflow:auto;margin-top:8px; max-height: 55vh;">
+        <table id="ledgerTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Memo</th>
+              <th>Prev Hash</th>
+              <th>Hash</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <details>
+        <summary>Suggested “best practice” workflow</summary>
+        <div class="tiny" style="margin-top:10px;">
+          <ol>
+            <li>Whenever money changes hands: add a <span class="pill">PAYMENT</span> block immediately with a short memo.</li>
+            <li>Whenever towing costs are known: add a <span class="pill">TOW_DEDUCTION</span> block, memo the receipt/provider.</li>
+            <li>Whenever major decisions happen: add a <span class="pill">NOTE</span> block (“mechanic friend replaced X”).</li>
+            <li>Export JSON after each real-world milestone so you have an off-device backup.</li>
+          </ol>
+        </div>
+      </details>
+
+      <div class="footer">
+        You can modify the agreement or contract details anytime—just hit <b>Save Contract</b> to record it.
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "sorento_pseudo_chain_v2_guided";
+
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => {
+    const x = Number(n || 0);
+    return x.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  };
+  const todayISO = () => new Date().toISOString().slice(0,10);
+
+  // "Stable-ish" stringify so hashes are predictable even if object key order differs.
+  const stableStringify = (obj) => {
+    const seen = new WeakSet();
+    const sorter = (a, b) => a.localeCompare(b);
+    const walk = (v) => {
+      if (v && typeof v === "object") {
+        if (seen.has(v)) return "[Circular]";
+        seen.add(v);
+        if (Array.isArray(v)) return v.map(walk);
+        const out = {};
+        Object.keys(v).sort(sorter).forEach(k => out[k] = walk(v[k]));
+        return out;
+      }
+      return v;
+    };
+    return JSON.stringify(walk(obj));
+  };
+
+  // SHA-256 hash using SubtleCrypto when available
+  async function sha256Hex(str) {
+    const enc = new TextEncoder();
+    const data = enc.encode(str);
+    if (crypto && crypto.subtle) {
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      const bytes = new Uint8Array(digest);
+      return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    // Fallback (weak) if SubtleCrypto unavailable
+    let h = 2166136261;
+    for (let i=0;i<str.length;i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return ("fnv1a_" + (h >>> 0).toString(16).padStart(8,"0"));
+  }
+
+  function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
+  // ---------- Default Contract ----------
+  const DEFAULT = {
+    contract: {
+      contractId: "KIA-SORENTO-2007-" + Math.random().toString(16).slice(2,10).toUpperCase(),
+      seller: "Seller",
+      buyer: "Buyer",
+      vehicle: "2007 Kia Sorento",
+      salePrice: 1300.00,
+      monthlyPayment: 300.00,
+      agreementText:
+`We agree on the sale of the 2007 Kia Sorento for a total price of $1,300, to be paid at a rate of $300 per month. Any towing costs required to transport the vehicle will be deducted from the $1,300 total before payments are calculated. Monthly payments will continue until the remaining adjusted balance is paid in full, with the final payment reflecting whatever balance remains. The vehicle title will be transferred approximately halfway through the payment schedule, assuming payments remain on track. Inspection, registration, and related fees will be discussed and decided at a later date once the vehicle is confirmed to be functional, with repairs being handled through a mechanic chosen by the buyer. No interest will be charged, and this agreement is based on good-faith understanding between both parties.`
+    },
+    chain: []
+  };
+
+  // ---------- Chain Logic ----------
+  async function makeGenesisIfEmpty(state){
+    if (state.chain.length) return state;
+    const genesis = {
+      index: 0,
+      timestamp: new Date().toISOString(),
+      type: "GENESIS",
+      date: todayISO(),
+      amount: 0,
+      memo: "Contract initialized (GENESIS block).",
+      prevHash: "0".repeat(64),
+      contractSnapshot: clone(state.contract),
+    };
+    const hash = await sha256Hex(stableStringify(genesis));
+    genesis.hash = hash;
+    state.chain.push(genesis);
+    return state;
+  }
+
+  function computeTotals(contract, chain){
+    let paid = 0, deduct = 0;
+    for (const b of chain) {
+      if (b.type === "PAYMENT") paid += Number(b.amount || 0);
+      if (b.type === "TOW_DEDUCTION") deduct += Number(b.amount || 0);
+    }
+    const start = Number(contract.salePrice || 0);
+    const balance = Math.max(0, start - deduct - paid);
+    return { start, paid, deduct, balance };
+  }
+
+  async function appendBlock(state, {type, date, amount, memo}) {
+    const prev = state.chain[state.chain.length - 1];
+    const block = {
+      index: prev.index + 1,
+      timestamp: new Date().toISOString(),
+      type,
+      date,
+      amount: Number(amount || 0),
+      memo: memo || "",
+      prevHash: prev.hash,
+    };
+
+    // If contract changed, include snapshot for audit trail.
+    if (type === "CONTRACT_UPDATE") block.contractSnapshot = clone(state.contract);
+
+    block.hash = await sha256Hex(stableStringify(block));
+    state.chain.push(block);
+    return state;
+  }
+
+  async function validateChain(chain){
+    for (let i=0;i<chain.length;i++){
+      const b = chain[i];
+      const copy = clone(b);
+      const claimedHash = copy.hash;
+      delete copy.hash;
+
+      const recomputed = await sha256Hex(stableStringify(copy));
+      if (recomputed !== claimedHash) return { ok:false, at:i, reason:"Hash mismatch (block edited?)" };
+
+      if (i === 0) {
+        if (b.prevHash !== "0".repeat(64)) return { ok:false, at:i, reason:"Bad genesis prevHash" };
+      } else {
+        if (b.prevHash !== chain[i-1].hash) return { ok:false, at:i, reason:"Broken prevHash link" };
+      }
+    }
+    return { ok:true };
+  }
+
+  // ---------- Persistence ----------
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return clone(DEFAULT);
+      const parsed = JSON.parse(raw);
+      parsed.contract ||= clone(DEFAULT.contract);
+      parsed.chain ||= [];
+      return parsed;
+    } catch {
+      return clone(DEFAULT);
+    }
+  }
+  function saveState(state){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  // ---------- UI ----------
+  let state = loadState();
+
+  function fillContractUI(){
+    $("contractId").value = state.contract.contractId || "";
+    $("seller").value = state.contract.seller || "";
+    $("buyer").value = state.contract.buyer || "";
+    $("vehicle").value = state.contract.vehicle || "";
+    $("salePrice").value = Number(state.contract.salePrice || 0);
+    $("monthlyPayment").value = Number(state.contract.monthlyPayment || 0);
+    $("agreementText").value = state.contract.agreementText || "";
+    $("entryDate").value = todayISO();
+    $("entryAmount").value = "";
+    $("entryMemo").value = "";
+  }
+
+  async function render(){
+    await makeGenesisIfEmpty(state);
+
+    const totals = computeTotals(state.contract, state.chain);
+    $("kpiPrice").textContent = money(totals.start);
+    $("kpiPaid").textContent = money(totals.paid);
+    $("kpiDeduct").textContent = money(totals.deduct);
+    $("kpiBalance").textContent = money(totals.balance);
+    $("kpiContractId").textContent = state.contract.contractId || "—";
+
+    const validity = await validateChain(state.chain);
+    const meta = [];
+    meta.push(`Blocks: ${state.chain.length}`);
+    meta.push(validity.ok ? `Chain: OK` : `Chain: BROKEN @ #${validity.at} (${validity.reason})`);
+    meta.push(`Rule: Balance = Price - Deductions - Payments`);
+    $("chainMeta").textContent = meta.join("   |   ");
+
+    const tbody = $("ledgerTable").querySelector("tbody");
+    tbody.innerHTML = "";
+
+    for (const b of state.chain) {
+      const tr = document.createElement("tr");
+
+      const amountDisp = (b.type === "PAYMENT" || b.type === "TOW_DEDUCTION")
+        ? money(b.amount)
+        : (b.amount ? String(b.amount) : "—");
+
+      tr.innerHTML = `
+        <td>${b.index}</td>
+        <td><span class="pill">${escapeHtml(b.type)}</span></td>
+        <td>${escapeHtml((b.date || "").toString())}</td>
+        <td>${escapeHtml(amountDisp)}</td>
+        <td>${escapeHtml((b.memo || "").toString())}</td>
+        <td class="hash">${escapeHtml((b.prevHash || "").slice(0,22))}…</td>
+        <td class="hash">${escapeHtml((b.hash || "").slice(0,22))}…</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ---------- Actions ----------
+  $("saveContractBtn").addEventListener("click", async () => {
+    state.contract.contractId = $("contractId").value.trim();
+    state.contract.seller = $("seller").value.trim();
+    state.contract.buyer = $("buyer").value.trim();
+    state.contract.vehicle = $("vehicle").value.trim();
+    state.contract.salePrice = Number($("salePrice").value || 0);
+    state.contract.monthlyPayment = Number($("monthlyPayment").value || 0);
+    state.contract.agreementText = $("agreementText").value;
+
+    state = await appendBlock(state, {
+      type: "CONTRACT_UPDATE",
+      date: $("entryDate").value || todayISO(),
+      amount: 0,
+      memo: "Contract fields updated."
+    });
+
+    saveState(state);
+    await render();
+  });
+
+  $("addEntryBtn").addEventListener("click", async () => {
+    const type = $("entryType").value;
+    const date = $("entryDate").value || todayISO();
+    const memo = $("entryMemo").value || "";
+
+    let amt = $("entryAmount").value;
+
+    // Money rules:
+    // - PAYMENT and TOW_DEDUCTION require a positive amount.
+    // - Others allow amount to be blank/0.
+    if (type === "PAYMENT" || type === "TOW_DEDUCTION") {
+      if (amt === "" || isNaN(Number(amt))) {
+        alert("Enter a valid amount for PAYMENT or TOW_DEDUCTION.");
+        return;
+      }
+      amt = Number(amt);
+      if (amt <= 0) {
+        alert("Amount should be greater than 0.");
+        return;
+      }
+    } else {
+      amt = Number(amt || 0);
+    }
+
+    state = await appendBlock(state, { type, date, amount: amt, memo });
+    saveState(state);
+
+    $("entryAmount").value = "";
+    $("entryMemo").value = "";
+    await render();
+  });
+
+  $("exportBtn").addEventListener("click", () => {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${state.contract.contractId || "contract"}_ledger.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  $("importBtn").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const parsed = JSON.parse(text);
+        if (!parsed.contract || !parsed.chain) throw new Error("Missing contract/chain");
+        state = parsed;
+        saveState(state);
+        fillContractUI();
+        await render();
+      } catch (e) {
+        alert("Import failed: " + e.message);
+      }
+    };
+    input.click();
+  });
+
+  $("resetBtn").addEventListener("click", async () => {
+    if (!confirm("Reset contract + chain stored in this browser?")) return;
+    state = clone(DEFAULT);
+    saveState(state);
+    fillContractUI();
+    await render();
+  });
+
+  // ---------- Init ----------
+  fillContractUI();
+  render();
+})();
+</script>
+</body>
+</html>

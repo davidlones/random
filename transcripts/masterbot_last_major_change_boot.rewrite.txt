@@ -1,0 +1,4 @@
+MasterBot change marker.
+Last major change landed on March 1st, 2026 at approximately 4:29 PM Central.
+This release moved runtime configuration into the database, hardened pinned console replacement, and strengthened control reaction persistence.
+Beginning full briefing sequence.

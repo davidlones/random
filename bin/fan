@@ -1,0 +1,2 @@
+#!/bin/bash
+/home/davidlones/.bin/wemo 10.0.1.34 toggle

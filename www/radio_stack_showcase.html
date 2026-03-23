@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radio Cortex Showcase</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  :root {
+    --paper: #f3efe4;
+    --ink: #141311;
+    --muted: #645b4e;
+    --wire: #9a2f1f;
+    --wire-soft: #d47a55;
+    --signal: #1d5c4f;
+    --signal-soft: #9dd7c4;
+    --panel: rgba(255, 252, 245, 0.78);
+    --line: rgba(20, 19, 17, 0.14);
+    --shadow: 0 22px 60px rgba(38, 24, 13, 0.14);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(circle at top left, rgba(212, 122, 85, 0.16), transparent 34%),
+      radial-gradient(circle at top right, rgba(29, 92, 79, 0.12), transparent 28%),
+      linear-gradient(180deg, #f7f2e7 0%, var(--paper) 38%, #ece5d6 100%);
+    color: var(--ink);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.65;
+  }
+
+  .page {
+    width: min(1120px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 32px 0 96px;
+  }
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background:
+      linear-gradient(135deg, rgba(255, 250, 240, 0.96), rgba(245, 236, 221, 0.88)),
+      linear-gradient(135deg, rgba(212, 122, 85, 0.12), rgba(29, 92, 79, 0.08));
+    box-shadow: var(--shadow);
+    padding: 56px 56px 40px;
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(20, 19, 17, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20, 19, 17, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 88%);
+  }
+
+  .eyebrow,
+  .tiny {
+    font-family: "Courier New", Courier, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .eyebrow {
+    position: relative;
+    z-index: 1;
+    color: var(--wire);
+    font-size: 12px;
+    margin: 0 0 18px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-weight: 700;
+    margin: 0;
+  }
+
+  h1 {
+    position: relative;
+    z-index: 1;
+    max-width: 12ch;
+    font-size: clamp(46px, 9vw, 108px);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+  }
+
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.9fr);
+    gap: 36px;
+    margin-top: 24px;
+    align-items: end;
+  }
+
+  .hero-copy p,
+  .section-copy p,
+  .footnote {
+    margin: 0;
+    font-size: 19px;
+  }
+
+  .hero-copy p + p,
+  .section-copy p + p {
+    margin-top: 14px;
+  }
+
+  .status-card {
+    padding: 22px 22px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(20, 19, 17, 0.1);
+    background: rgba(20, 19, 17, 0.88);
+    color: #f7f4eb;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 20px 45px rgba(20, 19, 17, 0.22);
+  }
+
+  .status-card .tiny {
+    color: var(--signal-soft);
+    font-size: 11px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .status-card strong {
+    color: #ffffff;
+  }
+
+  .lede-band {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+  }
+
+  .metric {
+    position: relative;
+    z-index: 1;
+    padding: 18px 18px 16px;
+    border-radius: 18px;
+    background: rgba(255, 252, 245, 0.78);
+    border: 1px solid rgba(20, 19, 17, 0.08);
+  }
+
+  .metric .tiny {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .metric strong {
+    display: block;
+    margin-top: 10px;
+    font-size: 23px;
+    line-height: 1.1;
+  }
+
+  .section {
+    margin-top: 28px;
+    padding: 34px 34px 30px;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+  }
+
+  .section-head {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .section-head .tiny {
+    color: var(--wire);
+    font-size: 12px;
+  }
+
+  .section-head h2 {
+    font-size: clamp(28px, 5vw, 46px);
+    letter-spacing: -0.03em;
+  }
+
+  .section-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 28px;
+  }
+
+  .stack-diagram,
+  .code-panel,
+  .timeline,
+  .callout,
+  .mini-card {
+    border-radius: 18px;
+    border: 1px solid rgba(20, 19, 17, 0.1);
+    background: rgba(255, 252, 245, 0.86);
+  }
+
+  .stack-diagram,
+  .callout,
+  .mini-card {
+    padding: 20px;
+  }
+
+  .stack-diagram ol,
+  .feature-list,
+  .use-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .stack-diagram li,
+  .feature-list li,
+  .use-list li {
+    position: relative;
+    padding-left: 18px;
+    margin-top: 14px;
+  }
+
+  .stack-diagram li:first-child,
+  .feature-list li:first-child,
+  .use-list li:first-child {
+    margin-top: 0;
+  }
+
+  .stack-diagram li::before,
+  .feature-list li::before,
+  .use-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.78em;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--wire);
+    transform: translateY(-50%);
+  }
+
+  .stack-diagram strong,
+  .feature-list strong,
+  .use-list strong {
+    display: block;
+    font-size: 17px;
+    margin-bottom: 4px;
+  }
+
+  .code-panel {
+    overflow: hidden;
+    background: #141311;
+    color: #f6f2ea;
+  }
+
+  .code-panel .tiny {
+    display: block;
+    padding: 14px 18px 0;
+    color: #b3d7cb;
+    font-size: 11px;
+  }
+
+  pre {
+    margin: 0;
+    padding: 14px 18px 20px;
+    overflow-x: auto;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13px;
+    line-height: 1.58;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  code {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.95em;
+  }
+
+  .timeline {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .timeline-row {
+    display: grid;
+    grid-template-columns: 126px 1fr;
+    gap: 16px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(20, 19, 17, 0.08);
+  }
+
+  .timeline-row:first-child {
+    border-top: none;
+  }
+
+  .timeline-row .tiny {
+    color: var(--muted);
+    font-size: 11px;
+    padding-top: 3px;
+  }
+
+  .timeline-row strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 16px;
+  }
+
+  .callout {
+    background:
+      linear-gradient(135deg, rgba(157, 215, 196, 0.18), rgba(255, 252, 245, 0.82));
+  }
+
+  .callout h3,
+  .mini-card h3 {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+  }
+
+  .mini-card {
+    padding: 20px;
+  }
+
+  .mini-card p {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .signal-strip {
+    margin-top: 22px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(20, 19, 17, 0.08);
+    background:
+      linear-gradient(90deg,
+        rgba(154, 47, 31, 0.15) 0%,
+        rgba(154, 47, 31, 0.15) 14%,
+        rgba(29, 92, 79, 0.16) 14%,
+        rgba(29, 92, 79, 0.16) 42%,
+        rgba(154, 47, 31, 0.1) 42%,
+        rgba(154, 47, 31, 0.1) 62%,
+        rgba(29, 92, 79, 0.16) 62%,
+        rgba(29, 92, 79, 0.16) 100%);
+  }
+
+  .signal-strip code {
+    display: block;
+    font-size: 13px;
+  }
+
+  .download-card {
+    margin-top: 22px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(20, 19, 17, 0.08);
+    background: rgba(255, 252, 245, 0.9);
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .download-card a {
+    display: inline-block;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: var(--wire);
+    color: #fff8f1;
+    text-decoration: none;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+
+  .download-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .download-card a:hover,
+  .download-card a:focus-visible {
+    background: #7f2619;
+  }
+
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+    gap: 22px;
+    margin-top: 22px;
+  }
+
+  .evidence-shot {
+    margin: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(20, 19, 17, 0.1);
+    background: rgba(255, 252, 245, 0.86);
+    box-shadow: var(--shadow);
+  }
+
+  .evidence-button {
+    display: block;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: zoom-in;
+  }
+
+  .evidence-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .evidence-shot figcaption {
+    padding: 12px 16px 16px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(10, 9, 8, 0.92);
+    z-index: 999;
+  }
+
+  .lightbox.is-open {
+    display: flex;
+  }
+
+  .lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+  }
+
+  .lightbox-panel {
+    position: relative;
+    z-index: 1;
+    width: min(96vw, 1700px);
+    height: min(92vh, 980px);
+    border-radius: 22px;
+    border: 1px solid rgba(255, 252, 245, 0.16);
+    background: rgba(20, 19, 17, 0.96);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+
+  .lightbox-toolbar {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    display: flex;
+    gap: 10px;
+  }
+
+  .lightbox-toolbar button {
+    border: 1px solid rgba(255, 252, 245, 0.16);
+    background: rgba(255, 252, 245, 0.08);
+    color: #f6f2ea;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .lightbox-toolbar button:hover,
+  .lightbox-toolbar button:focus-visible {
+    background: rgba(255, 252, 245, 0.16);
+  }
+
+  .lightbox-stage {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .lightbox-stage.is-dragging {
+    cursor: grabbing;
+  }
+
+  .lightbox-stage img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-width: none;
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  }
+
+  .lightbox-hint {
+    position: absolute;
+    left: 18px;
+    bottom: 16px;
+    z-index: 3;
+    color: rgba(246, 242, 234, 0.78);
+    font-family: "Courier New", Courier, monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .footer {
+    margin-top: 28px;
+    padding: 28px 32px 34px;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: rgba(20, 19, 17, 0.92);
+    color: #f6f2ea;
+    box-shadow: var(--shadow);
+  }
+
+  .footer h2 {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .footer p {
+    margin: 0;
+    max-width: 68ch;
+    font-size: 18px;
+  }
+
+  .footer p + p {
+    margin-top: 12px;
+  }
+
+  .footer .tiny {
+    color: #d4c7b2;
+    font-size: 11px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .accent {
+    color: var(--wire);
+  }
+
+  .signal {
+    color: var(--signal);
+  }
+
+  @media (max-width: 920px) {
+    .hero,
+    .section,
+    .footer {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .hero-grid,
+    .section-grid,
+    .evidence-grid,
+    .cards,
+    .lede-band {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .page {
+      width: min(100vw - 18px, 1120px);
+      padding-top: 12px;
+      padding-bottom: 40px;
+    }
+
+    .hero,
+    .section,
+    .footer {
+      border-radius: 20px;
+      padding: 20px 18px;
+    }
+
+    h1 {
+      font-size: clamp(40px, 16vw, 64px);
+    }
+
+    .hero-copy p,
+    .section-copy p,
+    .footnote,
+    .footer p {
+      font-size: 17px;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">Signal Systems / Local AI / RF Memory</p>
+      <h1>Radio Stack Showcase</h1>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p>This is a local radio system that listens, records, transcribes, interprets, and remembers. It started as a headless <span class="accent">HackRF + gqrx</span> toolchain and mutated into something closer to a small RF perception engine.</p>
+          <p>It can monitor a station live, archive rolling audio, decode digital text noise, transcribe speech, split nearby channels from one capture window, and run a local language model over the results without handing the whole thing to the internet like a lab intern with no supervision. The live monitor path now also captures the intended <code>GQRX</code> stream instead of the entire desktop mix, which is a modest but meaningful improvement in dignity.</p>
+        </div>
+        <aside class="status-card">
+          <span class="tiny">Live Stack Shape</span>
+<pre>HackRF / gqrx / multichannel
+        |
+        +-- audio
+        +-- decoder logs
+        +-- transcripts.jsonl
+                |
+                +-- radio-cortex
+                        |
+                        +-- events.jsonl
+                        +-- sol_log.txt
+                        +-- working_memory.json</pre>
+        </aside>
+      </div>
+      <div class="lede-band">
+        <div class="metric">
+          <span class="tiny">Single Station</span>
+          <strong>Monitor live RF, transcript, decoder chatter, and gain state in one terminal view.</strong>
+        </div>
+        <div class="metric">
+          <span class="tiny">Shared Capture Window</span>
+          <strong>Record several nearby channels at once when they fit inside the same practical HackRF span.</strong>
+        </div>
+        <div class="metric">
+          <span class="tiny">Persistent Local Memory</span>
+          <strong>Suppress repeated forecast loops and keep the changed information instead of logging every sermon.</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">01 / What It Actually Does</span>
+        <h2>From RF noise to structured memory</h2>
+      </div>
+      <div class="section-grid">
+        <div class="section-copy">
+          <p>The stack has five useful layers. First: the ordinary radio control surface. Second: rolling archives. Third: nearby-station multichannel capture inside one shared RF window. Fourth: a session brain that keeps the SDR backends from stomping on each other. Fifth: <span class="signal">radio-cortex</span>, which turns transcripts into event records and novelty-aware summaries.</p>
+          <p>The result is not just “radio with subtitles.” It is an indexed, replayable, timestamped record of what the air was saying, with enough interpretation to notice when a NOAA loop changes, when an FM ad contains a real event worth preserving, or when the monitor itself saw a station change and wrote it down.</p>
+        </div>
+        <div class="stack-diagram">
+          <ol>
+            <li>
+              <strong><code>radio</code> / <code>radio_monitor.py</code></strong>
+              Headless tuning, status, transcription, and decoder visibility for the single-station path.
+            </li>
+            <li>
+              <strong><code>radio_archive.py</code></strong>
+              Rolling or permanent audio capture with sidecar metadata and transcripts.
+            </li>
+            <li>
+              <strong><code>radio_multichannel.py</code></strong>
+              One center frequency, several nearby channels, one optional live playback channel.
+            </li>
+            <li>
+              <strong><code>radio_session.py</code></strong>
+              SDR ownership, health checks, and stale-primary cleanup when <code>gqrx</code> decides to become half-dead.
+            </li>
+            <li>
+              <strong><code>radio-cortex</code></strong>
+              Event classification, coalescing, novelty filtering, and disk-backed working memory.
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">02 / The Useful Examples</span>
+        <h2>Weather loop versus human world</h2>
+      </div>
+      <div class="section-grid">
+        <div class="timeline">
+          <div class="timeline-row">
+            <div class="tiny">NOAA / low entropy</div>
+            <div>
+              <strong>Repeated forecast cycles get merged and suppressed.</strong>
+              Instead of logging “sunny, clear, winds south” every pass, cortex coalesces adjacent weather fragments, suppresses low-value repeats, and remembers when the forecast is unchanged.
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="tiny">NOAA / signal shift</div>
+            <div>
+              <strong>Actual changes stand out.</strong>
+              “Elevated fire weather conditions will develop again tomorrow” becomes an <code>advisory</code>, not another bland weather line quietly dissolved into filler. When the source is known weather mode, cortex now treats that as an assumption instead of waiting to be talked into it by a transcript fragment having a good day.
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="tiny">FM / high entropy</div>
+            <div>
+              <strong>Commercial chatter can become a structured event.</strong>
+              A line like “Empire of the Sun at Dos Equis on September 20th” can carry <code>content_type</code>, <code>artist</code>, <code>location</code>, <code>date</code>, and <code>event_type</code>, and the OpenAI path now uses structured outputs so those fields survive more often. Slower enrichment now runs every three minutes instead of continuously, with a manual “infer now” escape hatch in the monitor when patience runs out first.
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="tiny">Monitor / metadata</div>
+            <div>
+              <strong>Station changes now land in the event stream.</strong>
+              Monitor startup state, retunes, and meaningful UI/RDS metadata changes are appended to <code>events.jsonl</code>, but duplicate settle-state churn is now debounced instead of being logged like a nervous breakdown.
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="tiny">Session / cleanup</div>
+            <div>
+              <strong>The stack now remembers its own wounds.</strong>
+              If <code>gqrx</code> is alive enough to hold a PID and dead enough to ignore the remote socket, the session layer eventually stops letting that corpse block the SDR forever.
+            </div>
+          </div>
+        </div>
+        <div class="code-panel">
+          <span class="tiny">Example Event Shapes</span>
+<pre>{
+  "type": "advisory",
+  "content_type": "weather_advisory",
+  "summary": "weather advisory: elevated fire weather conditions develop tomorrow",
+  "detailed_summary": "Elevated fire weather conditions will develop again tomorrow with dry air and stronger winds.",
+  "full_text": "Elevated fire weather conditions will develop again tomorrow..."
+}
+
+{
+  "type": "event",
+  "content_type": "concert",
+  "entity": "Empire of the Sun",
+  "location": "Dos Equis Pavilion",
+  "date": "2026-09-20",
+  "event_type": "concert"
+}
+
+{
+  "type": "system",
+  "content_type": "station_change",
+  "summary": "station changed to 162.550000 MHz FM / 12000"
+}</pre>
+        </div>
+      </div>
+      <div class="signal-strip">
+        <code>RF -> demod -> transcript -> events.jsonl -> working_memory.json -> "what changed?"</code>
+      </div>
+      <div class="evidence-grid">
+        <figure class="evidence-shot">
+          <button class="evidence-button" type="button" data-lightbox-trigger aria-label="Open full-size screenshot viewer">
+            <img src="radio_stack_live_desktop.png" alt="Desktop screenshot showing the radio monitor tuned to 162.550 MHz weather radio, with cortex in weather mode, a current-conditions inference, live transcript lines, and adjacent terminals displaying cortex event and memory JSON.">
+          </button>
+          <figcaption>Actual desktop capture from this machine: the monitor is tuned to <code>162.550 MHz</code> weather radio, transcription is live, cortex reports <code>mode: weather</code> with a current-conditions inference, and the neighboring terminals show the structured event stream plus cortex working-memory/state output.</figcaption>
+        </figure>
+        <div class="code-panel">
+          <span class="tiny">Live Event Excerpt</span>
+<pre>{"ts":"2026-03-21T12:14:47-0500","type":"system","content_type":"receiver_metadata_update","summary":"receiver metadata updated on 162.550000 MHz","metadata":{"audio_source":"sink-input:3340","transcribe_backend":"vosk","transcribe_model":"vosk:en-us","cortex_backend":"llama_cli","cortex_model":"/home/david/.cache/models/Llama-3.2-1B-Instruct-Q4_K_M.gguf"}}
+{"ts":"2026-03-21T12:21:12-0500","type":"station_id","content_type":"station_identification","radio_mode":"weather","summary":"At 20 p.m. Central Daylight Time, station identification announcing NOAA All Hazards Radio.","entity":"Station KEC55"}
+{"ts":"2026-03-21T12:22:08-0500","type":"weather","content_type":"weather_report","radio_mode":"weather","summary":"Current conditions (noon / 20 p.m. CDT): sunny with temperatures 79-82F and south winds 7-13 mph, pressure 29.93 in falling."}
+{"ts":"2026-03-21T12:22:50-0500","type":"weather","content_type":"weather_report","radio_mode":"weather","summary":"weather report: Today in the Dallas/Fort Worth Metroplex: sunny with highs in the lower 90s; tonight clear with lows in the mid 60s and light winds."}</pre>
+        </div>
+      </div>
+      <div class="download-card">
+        <div>
+          <div class="tiny">Current Bundle</div>
+          <strong>Download the latest compiled snapshot or grab the installer script.</strong>
+        </div>
+        <div class="download-actions">
+          <a href="radio_stack_latest.zip" download>Download ZIP</a>
+          <a href="install_radio_stack.sh" download>Installer Script</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">03 / Why The Architecture Matters</span>
+        <h2>One tuner, several jobs, fewer lies</h2>
+      </div>
+      <div class="section-grid">
+        <div class="section-copy">
+          <p>The stack is explicit about hardware constraints. One HackRF does not magically receive anything and everything at once. What it <em>can</em> do is capture a usable band around one center frequency and split several nearby channels inside that window. The software now respects that instead of pretending a single audio stream is the whole story.</p>
+          <p>That is why there are separate paths for single-station <code>gqrx</code>, archive jobs, and direct multichannel SDR capture. The session layer sits above them because otherwise you get the usual charming failure mode where every process believes it owns the same radio and none of them are technically wrong enough to stop.</p>
+        </div>
+        <div class="callout">
+          <h3>Practical Constraint</h3>
+          <p><strong><code>162.55 MHz</code> and <code>162.4 MHz</code>:</strong> viable together inside one weather-band capture window.</p>
+          <p><strong><code>103.7 MHz</code> and <code>162.55 MHz</code>:</strong> not viable together on one HackRF in the current setup. Physics remains rude.</p>
+        </div>
+      </div>
+      <div class="cards">
+        <article class="mini-card">
+          <h3>Archive</h3>
+          <p>Rolling FLAC segments, metadata, transcripts, and status files for one already-demodulated source.</p>
+        </article>
+        <article class="mini-card">
+          <h3>Multichannel</h3>
+          <p>Parallel nearby-channel demodulation with per-channel audio and transcript sidecars.</p>
+        </article>
+        <article class="mini-card">
+          <h3>Cortex</h3>
+          <p>Classification, coalescing, novelty suppression, SOL log lines, and a durable working memory.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">04 / Operator View</span>
+        <h2>The files that make it real</h2>
+      </div>
+      <div class="section-grid">
+        <div class="code-panel">
+          <span class="tiny">Useful Commands</span>
+<pre>radio monitor --transcribe --all-local
+radio archive start wx --cache-hours 1 --transcribe
+radio multichannel start wxband \
+  --center 162.55 \
+  --channel main:162.55:nfm:play \
+  --channel alt:162.4:nfm \
+  --transcribe
+radio cortex start
+
+tail -f ~/.local/state/radio/events.jsonl
+tail -f ~/.local/state/radio/sol_log.txt
+cat ~/.local/state/radio/working_memory.json</pre>
+        </div>
+        <div>
+          <ul class="feature-list">
+            <li>
+              <strong><code>events.jsonl</code></strong>
+              Structured event history from transcripts, DTMF hits, monitor metadata, and station-change events.
+            </li>
+            <li>
+              <strong><code>sol_log.txt</code></strong>
+              Short human-readable running log of what the air seems to be doing.
+            </li>
+            <li>
+              <strong><code>working_memory.json</code></strong>
+              Recent summaries, known entities, dominant type, suppression counts, and cycle hints that survive restarts.
+            </li>
+            <li>
+              <strong>Logging contract in the README</strong>
+              The bundle now documents which files are authoritative, which are transient, and which are just telemetry wearing a serious expression.
+            </li>
+            <li>
+              <strong><code>decoder.log</code> and <code>decoder_hits.log</code></strong>
+              Raw digital decoder chatter plus the heuristic “maybe this is real” stream.
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="cards">
+        <article class="code-panel">
+          <span class="tiny">tail -f ~/.local/state/radio/sol_log.txt</span>
+<pre>2026-03-21T12:21:12-0500 [unknown] Band log: At 20 p.m. Central Daylight Time, station identification announcing NOAA All Hazards Radio.. Recent pattern stays station_id.
+2026-03-21T12:22:08-0500 [unknown] Weather rolls in: Current conditions (noon / 20 p.m. CDT): sunny with temperatures 79-82F and south winds 7-13 mph, pressure 29.93 in falling..
+2026-03-21T12:22:55-0500 [unknown] Weather rolls in: weather report: Current observations and forecast for today/tonight/Sunday for the Dallas/Fort Worth area: sunny with highs in the lower 90s, tonight clear with lows in the mid 60s..
+2026-03-21T12:22:50-0500 [unknown] Weather rolls in: weather report: Today in the Dallas/Fort Worth Metroplex: sunny with highs in the lower 90s; tonight clear with lows in the mid 60s and light winds..</pre>
+        </article>
+        <article class="code-panel">
+          <span class="tiny">cat ~/.local/state/radio/working_memory.json</span>
+<pre>{
+  "last_updated": "2026-03-21T12:22:55-0500",
+  "patterns": {
+    "dominant_type": "weather",
+    "cycle_length": 61.0,
+    "last_cycle_phase": "forecast",
+    "last_change_reason": "new_information"
+  },
+  "recent_summaries": [
+    "At 20 p.m. Central Daylight Time, station identification announcing NOAA All Hazards Radio.",
+    "Current conditions (noon / 20 p.m. CDT): sunny with temperatures 79-82F and south winds 7-13 mph, pressure 29.93 in falling.",
+    "weather report: Today in the Dallas/Fort Worth Metroplex: sunny with highs in the lower 90s; tonight clear with lows in the mid 60s and light winds."
+  ],
+  "stats": {
+    "emitted_events": 416,
+    "suppressed_events": 32,
+    "anomalies": 8
+  },
+  "known_entities": {
+    "NOAA All Hazards Radio": 1,
+    "Station KEC55": 2,
+    "Dallas/Fort Worth Metroplex": 2
+  }
+}</pre>
+        </article>
+        <article class="code-panel">
+          <span class="tiny">tail -f ~/.local/state/radio/events.jsonl</span>
+<pre>{"type":"system","content_type":"receiver_metadata_update","summary":"receiver metadata updated on 162.550000 MHz"}
+{"type":"station_id","content_type":"station_identification","radio_mode":"weather","summary":"At 20 p.m. Central Daylight Time, station identification announcing NOAA All Hazards Radio."}
+{"type":"weather","content_type":"weather_report","radio_mode":"weather","summary":"Current conditions (noon / 20 p.m. CDT): sunny with temperatures 79-82F and south winds 7-13 mph, pressure 29.93 in falling."}
+{"type":"weather","content_type":"weather_report","radio_mode":"weather","summary":"weather report: Today in the Dallas/Fort Worth Metroplex: sunny with highs in the lower 90s; tonight clear with lows in the mid 60s and light winds."}</pre>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">05 / Installation</span>
+        <h2>One script, then the usual caveats</h2>
+      </div>
+      <div class="section-grid">
+        <div class="code-panel">
+          <span class="tiny">Installer Usage</span>
+<pre>curl -O http://127.0.0.1:8888/install_radio_stack.sh
+bash install_radio_stack.sh
+
+# Optional heavier bits
+bash install_radio_stack.sh --with-nemo
+bash install_radio_stack.sh --with-llama-cpp
+bash install_radio_stack.sh --with-caddy</pre>
+        </div>
+        <div>
+          <ul class="use-list">
+            <li>
+              <strong>System packages</strong>
+              Installs the apt-level runtime: <code>ffmpeg</code>, <code>gqrx-sdr</code>, <code>hackrf</code>, <code>gnuradio</code>, <code>gr-osmosdr</code>, <code>multimon-ng</code>, <code>xvfb</code>, OCR tools, and the rest of the machine glue.
+            </li>
+            <li>
+              <strong>Python runtime</strong>
+              Installs <code>openai</code>, <code>vosk</code>, and <code>PyYAML</code> for the scripts that run under normal <code>python3</code>, plus a dedicated <code>~/.venvs/radio</code> for the multichannel backend.
+            </li>
+            <li>
+              <strong>Current default inference path</strong>
+              The bundled cortex config currently defaults to OpenAI, so <code>OPENAI_API_KEY</code> still matters unless you explicitly run the stack in <code>--all-local</code> mode.
+            </li>
+            <li>
+              <strong>Optional heavier extras</strong>
+              NeMo and <code>llama-cpp-python</code> stay opt-in because disk space, compile time, and wheel drama are all capable of petty revenge.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="tiny">06 / What Makes It Interesting</span>
+        <h2>Not just transcription, not quite understanding</h2>
+      </div>
+      <div class="section-grid">
+        <div class="section-copy">
+          <p>There is a useful boundary here. The system is not claiming to “understand radio” in any grand sense. It does something more honest: it preserves the raw material, compresses repetition, extracts structure when available, and keeps enough continuity to notice when something changed.</p>
+          <p>That is enough to make weather radio less numbing, FM chatter more searchable, and local RF history less disposable. It also leaves a clear list of next steps: a proper NOAA phase model, replay across channels, and a shared real-time transcript bus so the monitor path stops living slightly off to the side like a neglected cousin.</p>
+        </div>
+        <div>
+          <div class="callout">
+            <h3>Current Character</h3>
+            <p>A little ham rig, a little black-box recorder, and a little local sensory cortex.</p>
+          </div>
+          <div class="mini-card" style="margin-top: 18px;">
+            <h3>Still Rough</h3>
+            <p><code>gqrx</code> can remain brittle, event extraction still depends on transcript quality, and the monitor transcript path is configured before it is fully fed. Systems engineering: one indignity after another.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span class="tiny">Showcase Summary</span>
+      <h2>It listens. It records. It remembers what changed.</h2>
+      <p>The stack started as a practical radio tool. It is now practical radio plus persistence, interpretation, and selective memory. That is enough to turn the air from a transient stream into a searchable local record of weather, chatter, anomalies, and the occasional concert ad drifting through North Texas.</p>
+      <p class="footnote">Everything here is local-first, terminal-driven, and built around the simple but surprisingly productive idea that the interesting part of radio begins after you stop merely hearing it.</p>
+    </footer>
+  </main>
+  <div class="lightbox" id="screenshot-lightbox" aria-hidden="true">
+    <div class="lightbox-backdrop" data-lightbox-close></div>
+    <div class="lightbox-panel" role="dialog" aria-modal="true" aria-label="Full-size showcase screenshot">
+      <div class="lightbox-toolbar">
+        <button type="button" data-lightbox-zoom-in>Zoom In</button>
+        <button type="button" data-lightbox-zoom-out>Zoom Out</button>
+        <button type="button" data-lightbox-reset>Reset</button>
+        <button type="button" data-lightbox-close>Close</button>
+      </div>
+      <div class="lightbox-stage" data-lightbox-stage>
+        <img src="radio_stack_live_desktop.png" alt="Full-size desktop screenshot of the radio stack showcase, including the weather-tuned monitor, cortex weather inference, transcript lines, and adjacent cortex JSON terminals." data-lightbox-image>
+      </div>
+      <div class="lightbox-hint">Click to open. Wheel to zoom. Drag to pan. Esc to close.</div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const trigger = document.querySelector("[data-lightbox-trigger]");
+      const lightbox = document.getElementById("screenshot-lightbox");
+      const stage = lightbox?.querySelector("[data-lightbox-stage]");
+      const image = lightbox?.querySelector("[data-lightbox-image]");
+      const closeButtons = lightbox?.querySelectorAll("[data-lightbox-close]") || [];
+      const zoomInButton = lightbox?.querySelector("[data-lightbox-zoom-in]");
+      const zoomOutButton = lightbox?.querySelector("[data-lightbox-zoom-out]");
+      const resetButton = lightbox?.querySelector("[data-lightbox-reset]");
+      if (!trigger || !lightbox || !stage || !image) {
+        return;
+      }
+
+      const state = {
+        scale: 1,
+        minScale: 1,
+        maxScale: 5,
+        x: 0,
+        y: 0,
+        isOpen: false,
+        dragging: false,
+        moved: false,
+        startX: 0,
+        startY: 0,
+        originX: 0,
+        originY: 0,
+      };
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function fitScale() {
+        const bounds = stage.getBoundingClientRect();
+        const naturalWidth = image.naturalWidth || bounds.width;
+        const naturalHeight = image.naturalHeight || bounds.height;
+        const widthScale = bounds.width / naturalWidth;
+        const heightScale = bounds.height / naturalHeight;
+        return Math.min(widthScale, heightScale, 1);
+      }
+
+      function applyTransform() {
+        image.style.transform = `translate(calc(-50% + ${state.x}px), calc(-50% + ${state.y}px)) scale(${state.scale})`;
+      }
+
+      function constrainPosition() {
+        const bounds = stage.getBoundingClientRect();
+        const naturalWidth = image.naturalWidth || bounds.width;
+        const naturalHeight = image.naturalHeight || bounds.height;
+        const scaledWidth = naturalWidth * state.scale;
+        const scaledHeight = naturalHeight * state.scale;
+        const maxX = Math.max(0, (scaledWidth - bounds.width) / 2);
+        const maxY = Math.max(0, (scaledHeight - bounds.height) / 2);
+        state.x = clamp(state.x, -maxX, maxX);
+        state.y = clamp(state.y, -maxY, maxY);
+      }
+
+      function resetView() {
+        state.minScale = fitScale();
+        state.scale = state.minScale;
+        state.x = 0;
+        state.y = 0;
+        constrainPosition();
+        applyTransform();
+      }
+
+      function zoom(delta, clientX, clientY) {
+        const bounds = stage.getBoundingClientRect();
+        const rectX = clientX - bounds.left - bounds.width / 2;
+        const rectY = clientY - bounds.top - bounds.height / 2;
+        const previousScale = state.scale;
+        const nextScale = clamp(previousScale * delta, state.minScale, state.maxScale);
+        if (nextScale === previousScale) {
+          return;
+        }
+        const ratio = nextScale / previousScale;
+        state.x = (state.x - rectX) * ratio + rectX;
+        state.y = (state.y - rectY) * ratio + rectY;
+        state.scale = nextScale;
+        constrainPosition();
+        applyTransform();
+      }
+
+      function openLightbox() {
+        lightbox.classList.add("is-open");
+        lightbox.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        state.isOpen = true;
+        resetView();
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        stage.classList.remove("is-dragging");
+        state.isOpen = false;
+        state.dragging = false;
+      }
+
+      trigger.addEventListener("click", openLightbox);
+      closeButtons.forEach((button) => button.addEventListener("click", closeLightbox));
+      zoomInButton?.addEventListener("click", () => {
+        const bounds = stage.getBoundingClientRect();
+        zoom(1.2, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      });
+      zoomOutButton?.addEventListener("click", () => {
+        const bounds = stage.getBoundingClientRect();
+        zoom(1 / 1.2, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      });
+      resetButton?.addEventListener("click", resetView);
+
+      stage.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const delta = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+        zoom(delta, event.clientX, event.clientY);
+      }, { passive: false });
+
+      stage.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        state.dragging = true;
+        state.moved = false;
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        state.originX = state.x;
+        state.originY = state.y;
+        stage.classList.add("is-dragging");
+        stage.setPointerCapture(event.pointerId);
+      });
+
+      stage.addEventListener("pointermove", (event) => {
+        if (!state.dragging) {
+          return;
+        }
+        const dx = event.clientX - state.startX;
+        const dy = event.clientY - state.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          state.moved = true;
+        }
+        state.x = state.originX + dx;
+        state.y = state.originY + dy;
+        constrainPosition();
+        applyTransform();
+      });
+
+      function releasePointer(event) {
+        if (!state.dragging) {
+          return;
+        }
+        state.dragging = false;
+        stage.classList.remove("is-dragging");
+        try {
+          stage.releasePointerCapture(event.pointerId);
+        } catch (_error) {
+        }
+      }
+
+      stage.addEventListener("pointerup", releasePointer);
+      stage.addEventListener("pointercancel", releasePointer);
+      stage.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        if (Math.abs(state.scale - state.minScale) < 0.01) {
+          zoom(2, event.clientX, event.clientY);
+          return;
+        }
+        resetView();
+      });
+
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === stage && !state.moved && Math.abs(state.scale - state.minScale) < 0.01) {
+          closeLightbox();
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (!state.isOpen) {
+          return;
+        }
+        resetView();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (!state.isOpen) {
+          return;
+        }
+        if (event.key === "Escape") {
+          closeLightbox();
+        } else if (event.key === "+" || event.key === "=") {
+          const bounds = stage.getBoundingClientRect();
+          zoom(1.2, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+        } else if (event.key === "-") {
+          const bounds = stage.getBoundingClientRect();
+          zoom(1 / 1.2, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+        } else if (event.key === "0") {
+          resetView();
+        }
+      });
+
+      if (image.complete) {
+        resetView();
+      } else {
+        image.addEventListener("load", resetView, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Money Flow Engine — Interactive Atlas</title>
+
+<style>
+:root{
+  --bg:#070b12;
+  --panel:#121d31;
+  --panel-soft:#182844;
+  --node:#243854;
+  --accent:#7cd4ff;
+  --accent2:#9cffb5;
+  --warn:#ffb86b;
+  --danger:#ff6b6b;
+  --text:#f6f9ff;
+  --text-soft:#dbe6f8;
+  --muted:#b9c9e4;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:radial-gradient(circle at 50% 20%, #0d1828, #070b12 75%);
+  color:var(--text);
+  font-family:Inter,system-ui,sans-serif;
+  line-height:1.6;
+  letter-spacing:.01em;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+}
+
+header{
+  padding:26px 20px 10px;
+  text-align:center;
+}
+
+header p{
+  color:var(--muted);
+  margin:0;
+}
+
+#wrap,
+#capacityWrap{
+  width:100%;
+  max-width:1320px;
+  padding:18px;
+  display:grid;
+  gap:18px;
+}
+
+#wrap{
+  grid-template-columns:minmax(0,1fr) 390px;
+}
+
+#capacityWrap{
+  padding-top:0;
+  padding-bottom:30px;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 390px;
+}
+
+.card{
+  background:linear-gradient(180deg,#121d30,#0f1828);
+  border-radius:18px;
+  padding:22px;
+  box-shadow:0 20px 50px rgba(0,0,0,.55);
+}
+
+h1,h2,h3{
+  line-height:1.2;
+  margin-bottom:10px;
+}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.controls button{
+  padding:7px 12px;
+  border-radius:9px;
+  border:1px solid #2a3f5a;
+  background:#162236;
+  color:var(--muted);
+  cursor:pointer;
+  font-size:13px;
+}
+
+.controls button.active,
+.controls button:hover{
+  border-color:var(--accent);
+  color:var(--text);
+}
+
+svg{
+  width:100%;
+  height:640px;
+}
+
+.node circle{
+  fill:var(--node);
+  stroke:var(--accent);
+  stroke-width:2;
+  transition:.25s;
+  cursor:pointer;
+}
+
+.node text{
+  fill:#fff;
+  font-size:16px;
+  font-weight:600;
+  letter-spacing:.3px;
+  pointer-events:none;
+}
+
+.node:hover circle,
+.node.selected circle{
+  stroke-width:3;
+  filter:drop-shadow(0 0 10px rgba(124,212,255,.65));
+}
+
+.node.owned circle{
+  stroke:var(--warn);
+  filter:drop-shadow(0 0 14px rgba(255,184,107,.55));
+}
+
+.flow{
+  fill:none;
+  stroke:var(--accent2);
+  stroke-width:3;
+  stroke-dasharray:10 8;
+  opacity:.7;
+  marker-end:url(#arrow);
+  cursor:pointer;
+  transition:.2s;
+}
+
+.flow:hover,
+.flow.active{
+  opacity:1;
+  stroke-width:4;
+}
+
+.policy,
+.missing{
+  fill:none;
+  opacity:0;
+  transition:.35s;
+}
+
+.policy{
+  stroke:var(--warn);
+  stroke-width:2.5;
+  stroke-dasharray:4 6;
+}
+
+.missing{
+  stroke:var(--danger);
+  stroke-width:4;
+  stroke-dasharray:4 6;
+}
+
+.policy.visible{opacity:.95}
+.missing.visible{
+  opacity:1;
+  filter:drop-shadow(0 0 12px rgba(255,107,107,.7));
+}
+
+.side h2,
+.side h3{
+  margin-top:0;
+}
+
+.meta{
+  margin:8px 0 16px;
+  color:var(--text-soft);
+  font-size:1.05rem;
+  line-height:1.6;
+}
+
+#detail{
+  background:var(--panel-soft);
+  border:1px solid #26405d;
+  border-radius:12px;
+  padding:14px;
+  min-height:130px;
+  line-height:1.65;
+  color:#d7e3f6;
+  font-size:1.02rem;
+}
+
+.log{
+  margin-top:14px;
+  max-height:260px;
+  overflow:auto;
+  font-family:ui-monospace,monospace;
+  font-size:13px;
+  line-height:1.45;
+}
+
+.entry{
+  margin-bottom:12px;
+  border-left:2px solid #33527a;
+  padding-left:10px;
+}
+
+.tag{color:var(--accent)}
+
+.cap-label{
+  font-size:16px;
+  color:#c8d6ec;
+}
+
+#direct{
+  width:100%;
+  margin:8px 0;
+}
+
+.bar{
+  min-height:40px;
+  border-radius:8px;
+  background:#1b2740;
+  margin:12px 0;
+  overflow:hidden;
+}
+
+.fill{
+  height:100%;
+  display:flex;
+  align-items:center;
+  padding-left:10px;
+  font-size:18px;
+  color:#07101f;
+  text-shadow:none;
+  font-weight:700;
+  white-space:normal;
+  line-height:1.2;
+}
+
+.phys{background:linear-gradient(90deg,#6cf,#9df);}
+.health{background:linear-gradient(90deg,#1f7,#3bd);}
+.edu{background:linear-gradient(90deg,#ffd38f,#ffe7b8);}
+.social{background:linear-gradient(90deg,#ffb86b,#ffd0a6);}
+.drag{background:linear-gradient(90deg,#ff6b6b,#ff9b9b);}
+
+.big{
+  font-size:24px;
+  line-height:1.4;
+  margin-top:12px;
+}
+
+.math-log{
+  font-family:ui-monospace,monospace;
+  font-size:18px;
+  white-space:pre-wrap;
+  line-height:1.65;
+  color:#e3edff;
+  background:var(--panel-soft);
+  border-radius:12px;
+  padding:14px;
+}
+
+.analysis-grid{
+  width:100%;
+  max-width:1320px;
+  padding:0 18px 12px;
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:18px;
+}
+
+.analysis-grid h2,
+.analysis-grid h3{
+  margin-top:0;
+}
+
+.analysis-grid p,
+.analysis-grid li{
+  color:var(--text-soft);
+}
+
+.analysis-grid ul{
+  padding-left:20px;
+}
+
+.analysis-grid .accent{
+  color:var(--accent2);
+  font-weight:700;
+}
+
+@media (max-width:1200px){
+  .big{font-size:22px}
+  .math-log{font-size:17px}
+}
+
+@media (max-width:1000px){
+  #wrap,
+  #capacityWrap,
+  .analysis-grid{grid-template-columns:1fr}
+  svg{height:560px}
+  .big{font-size:20px}
+  .math-log{font-size:15px}
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Money Flow Engine</h1>
+  <p>A navigable map of circulation, ownership, and capacity routing</p>
+</header>
+
+<div id="wrap">
+  <div class="card">
+    <div class="controls">
+      <button data-layer="base" class="active">Base circulation</button>
+      <button data-layer="ownership">Ownership</button>
+      <button data-layer="policy">Policy pressure</button>
+      <button data-layer="missing">Missing links</button>
+    </div>
+
+    <svg viewBox="0 0 900 640" id="moneyFlow">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#9cffb5"/>
+        </marker>
+      </defs>
+
+      <g class="node" id="Infrastructure" data-node="Infrastructure" transform="translate(450,110)">
+        <circle r="90"/>
+        <text text-anchor="middle" dy="6">Infrastructure</text>
+      </g>
+
+      <g class="node" id="Firms" data-node="Firms" transform="translate(760,330)">
+        <circle r="90"/>
+        <text text-anchor="middle" dy="6">Firms</text>
+      </g>
+
+      <g class="node" id="Finance" data-node="Finance" transform="translate(450,330)">
+        <circle r="75"/>
+        <text text-anchor="middle" dy="6">Finance</text>
+      </g>
+
+      <g class="node" id="Government" data-node="Government" transform="translate(140,330)">
+        <circle r="90"/>
+        <text text-anchor="middle" dy="6">Government</text>
+      </g>
+
+      <g class="node" id="Households" data-node="Households" transform="translate(450,560)">
+        <circle r="90"/>
+        <text text-anchor="middle" dy="6">Households</text>
+      </g>
+
+      <path class="flow" data-flow="Consumption" d="M520 540 Q720 480 760 370"/>
+      <path class="flow" data-flow="Wages" d="M700 330 Q560 480 500 540"/>
+      <path class="flow" data-flow="Investment" d="M720 260 Q560 160 470 150"/>
+      <path class="flow" data-flow="Taxes" d="M390 540 Q210 410 160 370"/>
+      <path class="flow" data-flow="Transfers" d="M160 290 Q300 470 420 540"/>
+      <path class="flow" data-flow="Credit" d="M450 330 Q620 330 740 330"/>
+      <path class="flow" data-flow="Interest" d="M450 330 Q260 330 160 330"/>
+
+      <path id="policyInfra" class="policy" d="M140 330 Q300 200 450 150"/>
+      <path id="policyHouseholds" class="policy" d="M140 330 Q280 500 430 550"/>
+
+      <path id="missingGovInfra" class="missing" d="M140 330 Q300 200 450 150"/>
+      <path id="missingInfraFinance" class="missing" d="M455 150 Q455 240 450 330"/>
+      <path id="missingFinanceHouseholds" class="missing" d="M450 330 Q450 440 450 560"/>
+      <path id="missingBenefitsToFirms" class="missing" d="M140 330 Q420 240 740 330"/>
+    </svg>
+  </div>
+
+  <div class="card side">
+    <h2 id="layerTitle">Layer: Circulation</h2>
+    <p id="layerDesc" class="meta">Click any node or flow to inspect its role in the system.</p>
+    <h3 id="focusTitle">Select a node or flow</h3>
+    <div id="detail">Inspect a node or flow to see what it does in the circulation system.</div>
+
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<section class="analysis-grid">
+  <article class="card">
+    <h2>Reallocation Reality Check</h2>
+    <p class="meta">This is a systems question disguised as a budget question: not “is spending category X wasteful,” but which spending streams could plausibly be redirected to infrastructure without increasing total spending.</p>
+
+    <h3>The current scale</h3>
+    <p>Recent U.S. federal spending is roughly <strong>$6.3T–$6.8T annually</strong>. Social Security, Medicare, Medicaid/health, defense, and debt interest absorb most of the total. Infrastructure mostly sits in the remaining "everything else" slice, which is meaningful but not dominant.</p>
+
+    <h3>The constraint</h3>
+    <p>If total spending and deficits stay fixed, new infrastructure dollars must come from existing commitments: defense, health programs, tax expenditures, other discretionary lines, or long-run debt-service reduction. That makes this a tradeoff problem, not a funding-discovery problem.</p>
+
+    <h3>Plausible reallocation channels</h3>
+    <ul>
+      <li><strong>Defense shifts:</strong> discretionary and large; even modest percentage changes can free tens of billions.</li>
+      <li><strong>Tax expenditures:</strong> functionally spending via foregone revenue; reform can create large fiscal room.</li>
+      <li><strong>Interest burden:</strong> compounding debt service creates drag that crowds out fresh physical investment.</li>
+      <li><strong>Fragmented discretionary programs:</strong> administrative complexity makes redirection slow even when agreed in principle.</li>
+    </ul>
+
+    <p class="accent">There is enough money in aggregate. The real constraint is where society chooses to park uncertainty: security, health, retirement, finance, or infrastructure.</p>
+  </article>
+
+  <aside class="card">
+    <h3>Visual implication</h3>
+    <p>The chart above already hints at it: Government-to-Infrastructure is often indirect, routed through firms, markets, and finance first.</p>
+    <p>That means infrastructure outcomes are shaped by institutional routing, not just headline totals.</p>
+    <h3>Model takeaway</h3>
+    <p>When infrastructure rises while totals stay flat, something else necessarily dims:</p>
+    <ul>
+      <li>security allocations,</li>
+      <li>transfer systems,</li>
+      <li>tax relief, or</li>
+      <li>pace of debt stabilization.</li>
+    </ul>
+    <p><strong>Budgets are moral geometry:</strong> every arrow strengthened in one direction weakens another.</p>
+  </aside>
+</section>
+
+<div id="capacityWrap">
+  <div class="card">
+    <h2>Foundational Systems Capacity</h2>
+    <p class="meta">This companion model keeps total spending fixed while changing how directly funds reach productive systems.
+More direct routing reduces friction and increases usable capacity.</p>
+
+    <label class="cap-label" for="direct">Direct capacity routing (<span id="directPct">55%</span>)</label>
+    <input type="range" id="direct" min="20" max="90" value="55" aria-label="Direct capacity routing percentage">
+
+    <div class="bar"><div id="phys" class="fill phys"></div></div>
+    <div class="bar"><div id="healthCap" class="fill health"></div></div>
+    <div class="bar"><div id="edu" class="fill edu"></div></div>
+    <div class="bar"><div id="socialCap" class="fill social"></div></div>
+    <div class="bar"><div id="drag" class="fill drag"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Totals</h2>
+
+    <div class="big" id="pool"></div>
+    <div class="big" id="directAmt"></div>
+    <div class="big" id="indirectAmt"></div>
+    <div class="big" id="capacityTotal"></div>
+  </div>
+
+  <div class="card">
+    <h3>Live math</h3>
+    <div id="mathLog" class="math-log"></div>
+  </div>
+</div>
+
+<script>
+const layerContent={
+  base:{
+    title:"Layer: Circulation",
+    desc:"Shows how income, spending, taxation, credit, and investment move through the system."
+  },
+  ownership:{
+    title:"Layer: Asset ownership",
+    desc:"Highlights where long-lived assets sit and which entities control productive capacity."
+  },
+  policy:{
+    title:"Layer: Policy levers",
+    desc:"Displays the direct pathways public institutions can use to influence infrastructure and household stability."
+  },
+  missing:{
+    title:"Layer: Structural gaps",
+    desc:"Reveals where spending reaches firms or finance before households accumulate durable assets."
+  }
+};
+
+const nodeInfo={
+  Infrastructure:"The physical backbone: housing, energy, transportation, digital networks, and public facilities. Determines the economy’s operating ceiling.",
+  Firms:"The production layer. Organizes labor and capital into goods, services, and retained earnings.",
+  Finance:"The allocation layer. Decides timing, scale, and risk of investment across sectors.",
+  Government:"The stabilizing layer. Sets rules, collects revenue, and redirects spending toward collective goals.",
+  Households:"The lived economy. Supplies labor, receives income, consumes output, and builds or loses assets."
+};
+
+const flowInfo={
+  Consumption:"Households purchasing goods and services. Converts income into firm revenue.",
+  Wages:"Compensation from firms to households that seeds the next spending cycle.",
+  Investment:"Capital committed into infrastructure or productive equipment to increase future output.",
+  Taxes:"Revenue collected to fund shared systems and stabilization.",
+  Transfers:"Payments that smooth shocks and support baseline living conditions.",
+  Credit:"Future purchasing power pulled into the present through lending.",
+  Interest:"The price of borrowing that redistributes income toward lenders over time."
+};
+
+const buttons=document.querySelectorAll(".controls button");
+const nodes=document.querySelectorAll(".node");
+const flows=document.querySelectorAll(".flow");
+const policyLines=[document.getElementById("policyInfra"),document.getElementById("policyHouseholds")];
+const missingLines=[
+  document.getElementById("missingGovInfra"),
+  document.getElementById("missingInfraFinance"),
+  document.getElementById("missingFinanceHouseholds"),
+  document.getElementById("missingBenefitsToFirms")
+];
+const log=document.getElementById("log");
+
+function addEntry(kind,name,text){
+  const entry=document.createElement("div");
+  entry.className="entry";
+  entry.innerHTML=`<div class="tag">[${kind}] ${name}</div><div>${text}</div>`;
+  log.prepend(entry);
+}
+
+function setLayer(layer){
+  buttons.forEach(b=>b.classList.toggle("active",b.dataset.layer===layer));
+  nodes.forEach(n=>n.classList.remove("owned"));
+  policyLines.forEach(line=>line.classList.remove("visible"));
+  missingLines.forEach(line=>line.classList.remove("visible"));
+
+  if(layer==="ownership"){
+    document.getElementById("Firms").classList.add("owned");
+    document.getElementById("Finance").classList.add("owned");
+  }
+  if(layer==="policy"){
+    policyLines.forEach(line=>line.classList.add("visible"));
+  }
+  if(layer==="missing"){
+    missingLines.forEach(line=>line.classList.add("visible"));
+  }
+
+  document.getElementById("layerTitle").textContent=layerContent[layer].title;
+  document.getElementById("layerDesc").textContent=layerContent[layer].desc;
+  addEntry("LAYER",layerContent[layer].title,layerContent[layer].desc);
+}
+
+buttons.forEach(b=>{
+  b.addEventListener("click",()=>setLayer(b.dataset.layer));
+});
+
+nodes.forEach(node=>{
+  node.addEventListener("click",()=>{
+    const name=node.dataset.node;
+    nodes.forEach(n=>n.classList.remove("selected"));
+    node.classList.add("selected");
+    document.getElementById("focusTitle").textContent=name;
+    document.getElementById("detail").textContent=nodeInfo[name];
+    addEntry("NODE",name,nodeInfo[name]);
+  });
+});
+
+flows.forEach(flow=>{
+  flow.addEventListener("click",()=>{
+    const name=flow.dataset.flow;
+    flows.forEach(f=>f.classList.remove("active"));
+    flow.classList.add("active");
+    document.getElementById("focusTitle").textContent=name;
+    document.getElementById("detail").textContent=flowInfo[name];
+    addEntry("FLOW",name,flowInfo[name]);
+  });
+});
+
+addEntry("SYSTEM","Money Flow Engine initialized","Base topology loaded. Select any layer, node, or flow.");
+
+const pool=8.5; // trillions
+const slider=document.getElementById("direct");
+
+function updateCapacity(){
+  const d=slider.value/100;
+
+  const directAmt=pool*d;
+  const indirect=pool-directAmt;
+  const systemDrag=indirect*0.25;
+
+  const phys=directAmt*0.2;
+  const health=directAmt*0.35;
+  const edu=directAmt*0.18;
+  const social=directAmt*0.27;
+
+  const capacityTotal=directAmt+(indirect-systemDrag);
+
+  setBar("phys","Physical infrastructure",phys);
+  setBar("healthCap","Health capacity",health);
+  setBar("edu","Education capacity",edu);
+  setBar("socialCap","Stabilization capacity",social);
+  setBar("drag","System drag",systemDrag);
+
+  document.getElementById("directPct").innerText=`${slider.value}%`;
+  document.getElementById("pool").innerText=`Total pool: $${pool.toFixed(2)}T`;
+  document.getElementById("directAmt").innerText=`Direct capacity: $${directAmt.toFixed(2)}T`;
+  document.getElementById("indirectAmt").innerText=`Indirect routed: $${indirect.toFixed(2)}T`;
+  document.getElementById("capacityTotal").innerText=`Total capacity produced: $${capacityTotal.toFixed(2)}T`;
+
+  renderMath(d,directAmt,indirect,systemDrag,capacityTotal);
+}
+
+function setBar(id,label,val){
+  const el=document.getElementById(id);
+  el.style.width=`${Math.max(12,val*18)}%`;
+  el.innerText=`${label} ≈ $${val.toFixed(2)}T`;
+}
+
+function renderMath(d,direct,indirect,drag,cap){
+  document.getElementById("mathLog").innerText=
+`Total pool = ${pool.toFixed(2)}T
+
+Direct routing = Pool × ${d.toFixed(2)}
+→ ${direct.toFixed(2)}T
+
+Indirect routing = ${indirect.toFixed(2)}T
+
+System drag (25% of indirect) = ${drag.toFixed(2)}T
+
+Capacity produced =
+Direct + (Indirect − Drag)
+= ${cap.toFixed(2)}T
+
+Meaning:
+Total spending does not change.
+The pathway changes.
+Output changes.`;
+}
+
+slider.addEventListener("input",updateCapacity);
+updateCapacity();
+</script>
+
+</body>
+</html>

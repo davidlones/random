@@ -1,0 +1,3 @@
+#!/bin/bash
+pacmd unload-module module-loopback
+pacmd load-module module-loopback latency_msec=1 source='alsa_input.pci-0000_00_1f.3.analog-stereo'

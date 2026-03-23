@@ -1,0 +1,5 @@
+#!/bin/bash
+clear
+echo "STArVING SysAdMIN"
+echo "will do 'penetration tests' for bitcoin..."
+qrcode-terminal "1C3WSaig3XpDuDkKCKETm7TNu7GhELr6tW"

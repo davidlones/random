@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Interactive Star Map V2</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: radial-gradient(circle at 20% 10%, #101426, #050814 60%, #020309 100%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e6edf7;
+      overflow: hidden;
+    }
+    #root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .app-shell {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      grid-template-rows: 1fr;
+      gap: 0;
+    }
+    @media (max-width: 800px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+    }
+    .sidebar {
+      position: relative;
+      background: rgba(5, 8, 20, 0.9);
+      border-right: 1px solid rgba(255,255,255,0.1);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(12px);
+      z-index: 2;
+    }
+    @media (max-width: 800px) {
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 10px 12px;
+      }
+    }
+    .title-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .app-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f5f7ff;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #9aa4c6;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,255,0.4);
+      background: rgba(17,24,39,0.9);
+      color: #c7d2ff;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .section {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #9ca3c9;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .control-label {
+      font-size: 11px;
+      color: #cbd5ff;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .control-label span.value {
+      color: #a5b4ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .control-input input[type="range"] {
+      width: 100%;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pill {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,255,0.35);
+      background: rgba(17,24,39,0.85);
+      color: #c7d2ff;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7ff, #a855f7);
+    }
+    .status {
+      margin-top: auto;
+      font-size: 11px;
+      color: #9aa4c6;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .status-line span.value {
+      font-variant-numeric: tabular-nums;
+      color: #c7d2ff;
+    }
+    .status-error {
+      color: #fecaca;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      background: radial-gradient(circle at 50% 15%, #111827, #020617 70%, #000 100%);
+      overflow: hidden;
+    }
+    .star-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .hud-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 16px;
+      font-size: 11px;
+      color: rgba(209,213,255,0.9);
+      z-index: 2;
+    }
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .hud-panel {
+      background: radial-gradient(circle at 0 0, rgba(129,140,248,0.15), rgba(15,23,42,0.9));
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,255,0.35);
+      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .hud-panel-rect {
+      border-radius: 10px;
+      padding: 6px 10px;
+    }
+    .hud-sep {
+      width: 1px;
+      height: 16px;
+      background: linear-gradient(to bottom, transparent, rgba(148,163,255,0.7), transparent);
+    }
+    .hud-label {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #a5b4ff;
+      font-size: 10px;
+    }
+    .hud-value {
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #f9fafb, #4ade80);
+      box-shadow: 0 0 6px rgba(52,211,153,0.8);
+    }
+    .hud-dot-red {
+      background: radial-gradient(circle at 30% 30%, #fee2e2, #f97373);
+      box-shadow: 0 0 6px rgba(248,113,113,0.85);
+    }
+
+    .info-panel {
+      max-width: 290px;
+    }
+    .info-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #e5e7ff;
+      margin-bottom: 2px;
+    }
+    .info-body {
+      font-size: 11px;
+      color: #c7d2ff;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .info-body div.row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .info-body span.value {
+      font-variant-numeric: tabular-nums;
+      color: #e5e7ff;
+      text-align: right;
+      max-width: 55%;
+      overflow-wrap: anywhere;
+    }
+    .info-body .raw {
+      margin-top: 4px;
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      color: #9ca3c9;
+      white-space: normal;       /* allow wrapping */
+      overflow-wrap: anywhere;   /* break long sequences */
+      opacity: 0.9;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 10%, rgba(15,23,42,0.9), rgba(3,7,18,1));
+      z-index: 10;
+    }
+    .boot-panel {
+      border-radius: 16px;
+      padding: 18px 20px;
+      background: radial-gradient(circle at 0 0, rgba(129,140,248,0.22), rgba(15,23,42,0.96));
+      border: 1px solid rgba(191,219,254,0.4);
+      box-shadow:
+        0 20px 45px rgba(15,23,42,0.9),
+        0 0 20px rgba(129,140,248,0.4);
+      max-width: 360px;
+    }
+    .boot-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #e5e7ff;
+      margin-bottom: 8px;
+    }
+    .boot-subtitle {
+      font-size: 12px;
+      color: #cbd5ff;
+      margin-bottom: 10px;
+    }
+    .boot-progress {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(15,23,42,1);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .boot-bar {
+      position: absolute;
+      inset: 0;
+      width: 40%;
+      background: linear-gradient(90deg, #38bdf8, #a855f7, #f97316);
+      animation: boot-scan 1.6s infinite ease-in-out;
+    }
+    @keyframes boot-scan {
+      0% { transform: translateX(-60%); }
+      50% { transform: translateX(20%); }
+      100% { transform: translateX(140%); }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+// ---- Helpers ----
+
+function parseSexagesimalRA(hms) {
+  const parts = hms.trim().split(":");
+  if (parts.length < 2) return 0;
+  const h = parseFloat(parts[0]) || 0;
+  const m = parseFloat(parts[1]) || 0;
+  const s = parseFloat(parts[2] || "0") || 0;
+  const hours = h + m/60 + s/3600;
+  return hours * 15.0;
+}
+
+function parseSexagesimalDec(dms) {
+  let s = dms.trim();
+  let sign = 1;
+  if (s[0] === "-") { sign = -1; s = s.slice(1); }
+  else if (s[0] === "+") { s = s.slice(1); }
+  const parts = s.split(":");
+  if (parts.length < 2) return 0;
+  const d = parseFloat(parts[0]) || 0;
+  const m = parseFloat(parts[1]) || 0;
+  const secRaw = parts[2] || "0";
+  const sec = parseFloat(secRaw) || 0;
+  const deg = d + m/60 + sec/3600;
+  return sign * deg;
+}
+
+function spectralToRGB(sp) {
+  if (!sp || typeof sp !== "string") {
+    return { r: 200, g: 220, b: 255 };
+  }
+  const c = sp.trim().charAt(0).toUpperCase();
+  switch (c) {
+    case "O": return { r: 170, g: 200, b: 255 };
+    case "B": return { r: 180, g: 205, b: 255 };
+    case "A": return { r: 200, g: 215, b: 255 };
+    case "F": return { r: 230, g: 235, b: 255 };
+    case "G": return { r: 255, g: 244, b: 224 };
+    case "K": return { r: 255, g: 220, b: 190 };
+    case "M": return { r: 255, g: 200, b: 170 };
+    default:  return { r: 210, g: 230, b: 255 };
+  }
+}
+
+function rgbToRgbaString({r,g,b}, a) {
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// Full Stars.dat parser according to Stars.hdr:
+// SAO  RA  Dec  RA_Mot  Dec_Mot  Mag  B-V  Sp  RadVel  Dist  Name...
+function parseStarsFromDatText(text, maxCount = 15000) {
+  if (!text) return [];
+  const lines = text.split(/\r?\n/);
+  const stars = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (!/^[0-9]/.test(trimmed[0])) continue;
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 10) continue;
+
+    const sao    = parts[0];
+    const raHms  = parts[1];
+    const decDms = parts[2];
+    const raMot  = parseFloat(parts[3]);
+    const decMot = parseFloat(parts[4]);
+    const mag    = parseFloat(parts[5]);
+    const bv     = parseFloat(parts[6]);
+    const sp     = parts[7] || "";
+    const radVel = parseFloat(parts[8]);
+    const dist   = parseFloat(parts[9]);
+    const name   = parts.slice(10).join(" ").replace(/\|+$/, "").trim();
+
+    if (!isFinite(mag)) continue;
+
+    const raDeg  = parseSexagesimalRA(raHms);
+    const decDeg = parseSexagesimalDec(decDms);
+    const col    = spectralToRGB(sp);
+    const phase  = Math.random() * Math.PI * 2;
+
+    stars.push({
+      id: sao,
+      raHms,
+      decDms,
+      raDeg,
+      decDeg,
+      pmRa: isFinite(raMot) ? raMot : null,
+      pmDec: isFinite(decMot) ? decMot : null,
+      mag,
+      bv: isFinite(bv) ? bv : null,
+      sp,
+      radVel: isFinite(radVel) ? radVel : null,
+      dist: isFinite(dist) ? dist : null,
+      name: name || null,
+      rgb: col,
+      phase,
+      raw: trimmed
+    });
+
+    if (stars.length >= maxCount) break;
+  }
+  return stars;
+}
+
+// ---- Canvas renderer ----
+
+function StarCanvas({ stars, settings, onSelectStar }) {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const animationRef = useRef(null);
+  const screenPointsRef = useRef([]);
+  const shellActiveRef = useRef(true);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    let resizeObserver = null;
+    let running = false;
+
+    const shouldRender = () => !document.hidden && shellActiveRef.current;
+
+    function resize() {
+      const rect = container.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function stopRenderLoop() {
+      running = false;
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    }
+
+    function startRenderLoop() {
+      if (running || !shouldRender()) return;
+      running = true;
+      animationRef.current = requestAnimationFrame(render);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => resize());
+      resizeObserver.observe(container);
+    }
+
+    function render(ts) {
+      if (!shouldRender()) {
+        stopRenderLoop();
+        return;
+      }
+      const time = ts / 1000.0;
+      const rect = container.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const maxStarsToDraw = Math.min(settings.starCount, stars.length);
+      const magLimit = settings.magLimit;
+      const baseMaxSize = settings.maxSize;
+      const fuzzIntensity = settings.fuzzIntensity;
+
+      const points = [];
+      for (let i = 0; i < maxStarsToDraw; i++) {
+        const star = stars[i];
+        if (star.mag > magLimit) continue;
+
+        const x = (star.raDeg / 360) * width;
+        const y = height * 0.5 - (star.decDeg / 180) * height;
+
+        const magFactor = Math.max(0, 8 - star.mag);
+        const coreSize = Math.max(0.4, baseMaxSize * (magFactor / 8));
+        const haloSize = coreSize * (2.0 + 0.7 * fuzzIntensity);
+        const flicker = 0.6 + 0.5 * Math.sin(time * 2.3 + star.phase);
+
+        const haloR = haloSize * flicker;
+        const haloAlpha = 0.18 * fuzzIntensity;
+        if (haloAlpha > 0.01) {
+          const grad = ctx.createRadialGradient(x, y, 0, x, y, haloR);
+          const c = star.rgb;
+          grad.addColorStop(0, rgbToRgbaString(c, haloAlpha));
+          grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(x, y, haloR, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const coreR = Math.max(0.5, coreSize * 0.7 * flicker);
+        ctx.fillStyle = rgbToRgbaString(star.rgb, 0.98);
+        ctx.beginPath();
+        ctx.arc(x, y, coreR, 0, Math.PI * 2);
+        ctx.fill();
+
+        points.push({ star, x, y, r: Math.max(coreR, haloR * 0.25) });
+      }
+      screenPointsRef.current = points;
+      animationRef.current = requestAnimationFrame(render);
+    }
+
+    function handleVisibilityChange() {
+      if (shouldRender()) startRenderLoop();
+      else stopRenderLoop();
+    }
+
+    function handleShellActivity(event) {
+      if (event.origin !== window.location.origin) return;
+      if (!event.data || event.data.type !== "sol-window-activity") return;
+      shellActiveRef.current = Boolean(event.data.active);
+      handleVisibilityChange();
+    }
+
+    startRenderLoop();
+
+    function handleClick(evt) {
+      if (!onSelectStar) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const y = evt.clientY - rect.top;
+      const pts = screenPointsRef.current || [];
+      let best = null;
+      let bestR2 = Infinity;
+      const pickRadius = 14;
+      const pickR2 = pickRadius * pickRadius;
+      for (const p of pts) {
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const r2 = dx*dx + dy*dy;
+        if (r2 < pickR2 && r2 < bestR2) {
+          bestR2 = r2;
+          best = p.star;
+        }
+      }
+      if (best) onSelectStar(best);
+    }
+
+    canvas.addEventListener("click", handleClick);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("message", handleShellActivity);
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      resizeObserver?.disconnect();
+      canvas.removeEventListener("click", handleClick);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("message", handleShellActivity);
+      stopRenderLoop();
+    };
+  }, [stars, settings, onSelectStar]);
+
+  return (
+    <div ref={containerRef} className="canvas-container">
+      <canvas ref={canvasRef} className="star-canvas"/>
+    </div>
+  );
+}
+
+// ---- Main app ----
+
+function App() {
+  const [stars, setStars] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [settings, setSettings] = useState({
+    maxSize: 3.5,
+    magLimit: 8.0,
+    starCount: 8000,
+    fuzzIntensity: 1.0
+  });
+  const [selectedStar, setSelectedStar] = useState(null);
+
+  useEffect(() => {
+    async function loadDat() {
+      try {
+        const res = await fetch("/dat.json", { cache: "no-cache" });
+        if (!res.ok) throw new Error("Failed to fetch dat.json: " + res.status);
+        const json = await res.json();
+        if (!json || typeof json.Stars !== "string") {
+          throw new Error("dat.json missing 'Stars' text table");
+        }
+        const parsed = parseStarsFromDatText(json.Stars, 20000);
+        setStars(parsed);
+        setLoaded(true);
+      } catch (err) {
+        console.error(err);
+        setError(err.message || String(err));
+      }
+    }
+    loadDat();
+  }, []);
+
+  const visibleStars = useMemo(() => {
+    const magLimit = settings.magLimit;
+    return stars.filter(s => s.mag <= magLimit);
+  }, [stars, settings.magLimit]);
+
+  const handleSettingChange = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="app-shell">
+      <div className="sidebar">
+        <div className="title-row">
+          <div className="app-title">Interactive Star Map V2</div>
+          <div className="subtitle">
+            Live rendering of the original StarFinder II star catalog (J2000).
+          </div>
+          <div className="badge-row">
+            <div className="badge">Canvas</div>
+            <div className="badge">React</div>
+            <div className="badge">StarFinder II Dataset</div>
+          </div>
+        </div>
+
+        <div className="section">
+          <div className="section-title">Render Controls</div>
+
+          <div className="control-group">
+            <label className="control-label">
+              <span>Max object size</span>
+              <span className="value">{settings.maxSize.toFixed(1)} px</span>
+            </label>
+            <div className="control-input">
+              <input
+                type="range"
+                min="1"
+                max="7"
+                step="0.1"
+                value={settings.maxSize}
+                onChange={e => handleSettingChange("maxSize", parseFloat(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label">
+              <span>Magnitude limit</span>
+              <span className="value">{settings.magLimit.toFixed(1)}</span>
+            </label>
+            <div className="control-input">
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="0.1"
+                value={settings.magLimit}
+                onChange={e => handleSettingChange("magLimit", parseFloat(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label">
+              <span>Star count cap</span>
+              <span className="value">{settings.starCount}</span>
+            </label>
+            <div className="control-input">
+              <input
+                type="range"
+                min="1000"
+                max="20000"
+                step="500"
+                value={settings.starCount}
+                onChange={e => handleSettingChange("starCount", parseInt(e.target.value, 10))}
+              />
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label">
+              <span>Fuzz intensity</span>
+              <span className="value">{settings.fuzzIntensity.toFixed(2)}</span>
+            </label>
+            <div className="control-input">
+              <input
+                type="range"
+                min="0"
+                max="1.5"
+                step="0.05"
+                value={settings.fuzzIntensity}
+                onChange={e => handleSettingChange("fuzzIntensity", parseFloat(e.target.value))}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="section">
+          <div className="section-title">Legend</div>
+          <div className="pill-row">
+            <div className="pill">
+              <span className="pill-dot"></span>
+              <span>Hot / early types (O–A)</span>
+            </div>
+            <div className="pill">
+              <span className="pill-dot" style={{background:"radial-gradient(circle at 30% 30%, #fef3c7, #f97316)"}}></span>
+              <span>Solar-like (F–G)</span>
+            </div>
+            <div className="pill">
+              <span className="pill-dot" style={{background:"radial-gradient(circle at 30% 30%, #fee2e2, #f97373)"}}></span>
+              <span>Cool giants (K–M)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="status">
+          <div className="status-line">
+            <span>Catalog stars (parsed)</span>
+            <span className="value">{stars.length}</span>
+          </div>
+          <div className="status-line">
+            <span>Visible (mag ≤ {settings.magLimit.toFixed(1)})</span>
+            <span className="value">{visibleStars.length}</span>
+          </div>
+          {error && (
+            <div className="status-error">
+              Error loading dat.json: {error}
+            </div>
+          )}
+          {!error && !loaded && (
+            <div>
+              Loading StarFinder II dataset from <code>/dat.json</code>…
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="canvas-container">
+        <StarCanvas
+          stars={visibleStars}
+          settings={settings}
+          onSelectStar={setSelectedStar}
+        />
+        <div className="hud-overlay">
+          <div className="hud-top">
+            <div className="hud-panel">
+              <div className="hud-dot"></div>
+              <div>
+                <div className="hud-label">Dataset</div>
+                <div className="hud-value">StarFinder II • J2000 snapshot</div>
+              </div>
+              <div className="hud-sep"></div>
+              <div>
+                <div className="hud-label">Stars parsed</div>
+                <div className="hud-value">{stars.length}</div>
+              </div>
+            </div>
+          </div>
+          <div className="hud-bottom">
+            <div className="hud-panel hud-panel-rect info-panel">
+              <div>
+                <div className="info-title">Focus</div>
+                {!selectedStar && (
+                  <div className="info-body">
+                    Click on a star to inspect all catalog fields from <code>Stars.dat</code>.
+                  </div>
+                )}
+                {selectedStar && (
+                  <div className="info-body">
+                    <div className="row">
+                      <span>ID (SAO)</span>
+                      <span className="value">{selectedStar.id}</span>
+                    </div>
+                    {selectedStar.name && (
+                      <div className="row">
+                        <span>Name / Bayer / ADS</span>
+                        <span className="value">{selectedStar.name}</span>
+                      </div>
+                    )}
+                    <div className="row">
+                      <span>Mag</span>
+                      <span className="value">{selectedStar.mag.toFixed(2)}</span>
+                    </div>
+                    {selectedStar.bv != null && (
+                      <div className="row">
+                        <span>B−V</span>
+                        <span className="value">{selectedStar.bv.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="row">
+                      <span>Spectral</span>
+                      <span className="value">{selectedStar.sp || "—"}</span>
+                    </div>
+                    <div className="row">
+                      <span>RA (hms)</span>
+                      <span className="value">{selectedStar.raHms}</span>
+                    </div>
+                    <div className="row">
+                      <span>Dec (dms)</span>
+                      <span className="value">{selectedStar.decDms}</span>
+                    </div>
+                    <div className="row">
+                      <span>RA (deg)</span>
+                      <span className="value">{selectedStar.raDeg.toFixed(3)}</span>
+                    </div>
+                    <div className="row">
+                      <span>Dec (deg)</span>
+                      <span className="value">{selectedStar.decDeg.toFixed(3)}</span>
+                    </div>
+                    {selectedStar.pmRa != null && (
+                      <div className="row">
+                        <span>μRA</span>
+                        <span className="value">{selectedStar.pmRa.toFixed(3)}</span>
+                      </div>
+                    )}
+                    {selectedStar.pmDec != null && (
+                      <div className="row">
+                        <span>μDec</span>
+                        <span className="value">{selectedStar.pmDec.toFixed(3)}</span>
+                      </div>
+                    )}
+                    {selectedStar.radVel != null && (
+                      <div className="row">
+                        <span>Radial vel.</span>
+                        <span className="value">{selectedStar.radVel.toFixed(0)}</span>
+                      </div>
+                    )}
+                    {selectedStar.dist != null && (
+                      <div className="row">
+                        <span>Distance</span>
+                        <span className="value">{selectedStar.dist.toFixed(0)}</span>
+                      </div>
+                    )}
+                    <div className="raw" title={selectedStar.raw}>
+                      Row: {selectedStar.raw}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="hud-panel">
+              <div className="hud-dot-red"></div>
+              <div>
+                <div className="hud-label">Renderer</div>
+                <div className="hud-value">Canvas • point sources with pulsing halos</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {!loaded && !error && (
+          <div className="loading-overlay">
+            <div className="boot-panel">
+              <div className="boot-title">Initializing Star Map</div>
+              <div className="boot-subtitle">
+                Reading original StarFinder II <code>Stars.dat</code> via <code>/dat.json</code>, building catalog in memory, and seeding the canvas renderer.
+              </div>
+              <div className="boot-progress">
+                <div className="boot-bar"></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>

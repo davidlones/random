@@ -1,0 +1,60 @@
+#!/usr/local/bin/expect -f
+
+set TO [lindex $argv 0]
+set NAME [lindex $argv 1]
+set FROM [lindex $argv 2]
+set DOMAIN0 [split $FROM "@"]
+set DOMAIN [lindex $DOMAIN0 1]
+set SUBJECT [lindex $argv 3]
+set BODY [lindex $argv 4]
+set ARG5 [lindex $argv 5]
+set ARG6 [lindex $argv 6]
+set ARG7 [lindex $argv 7]
+
+set timeout -1
+spawn $env(SHELL)
+match_max 100000
+
+send -- "telnet localhost smtp"
+send -- "\r"
+send -- "ehlo "
+send -- $DOMAIN
+send -- "\r"
+send -- "mail from: "
+send -- $FROM
+send -- "\r"
+send -- "rcpt to: "
+send -- $TO
+send -- "\r"
+send -- "data"
+send -- "\r"
+send -- "To: "
+send -- $TO
+send -- "\r"
+send -- "From: "
+send -- $NAME
+send -- " <"
+send -- $FROM
+send -- ">"
+send -- "\r"
+if { $ARG5 eq "--secret" } {
+    send -- "Secret: "
+    send -- $ARG6
+    send -- "\r";
+}
+send -- "Subject: "
+send -- $SUBJECT
+send -- "\r"
+if { $BODY eq "-f" } {
+    set file [open $ARG5]
+    send -- [read $file]
+    send -- "\r";
+} else {
+    send -- $BODY
+}
+send -- "\r"
+send -- ".\r"
+send -- "quit\r"
+expect "Connection closed by foreign host."
+send -- "exit\r"
+expect eof

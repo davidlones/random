@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Public Logbook</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #0b1830;
+      --panel-2: #101f3e;
+      --line: #28466f;
+      --ink: #d8e8ff;
+      --muted: #88a4c8;
+      --accent: #4ef0b7;
+      --warn: #ffd15c;
+      --danger: #ff7c7c;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: linear-gradient(180deg, #091224, #06101e 55%, #08172d);
+      color: var(--ink);
+      font: 13px/1.35 "Lucida Console", "Courier New", monospace;
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #13284e, #0d1d3a);
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand strong {
+      color: var(--accent);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand span,
+    .meta {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .shell {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: rgba(9, 20, 40, .85);
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--warn);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .channel-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .channel {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.03);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .channel:hover,
+    .channel:focus-visible,
+    .channel.active {
+      border-color: #4d78ba;
+      background: rgba(90, 132, 214, .18);
+      outline: none;
+    }
+
+    .rules {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 11px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      background:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px),
+        var(--bg);
+      background-size: 100% 22px, 22px 100%, auto;
+    }
+
+    .log {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    .entry,
+    .system {
+      padding: 8px 10px;
+      border: 1px solid rgba(95, 140, 214, .28);
+      background: rgba(8, 18, 34, .86);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .entry-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .stamp {
+      color: var(--warn);
+      font-size: 11px;
+    }
+
+    .nick {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .body {
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .system {
+      color: var(--muted);
+      border-style: dashed;
+    }
+
+    .composer {
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, #09162b, #081224);
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .field-stack {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field-card {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid rgba(95, 140, 214, .34);
+      background: rgba(255,255,255,.03);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .field-label {
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--warn);
+    }
+
+    .message-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #35537d;
+      background: linear-gradient(180deg, #f5f8ff, #dfe8f8);
+      color: #07111f;
+      padding: 8px 9px;
+      box-shadow: inset 0 1px 0 #fff;
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: none;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: 1px solid #4d6488;
+      background: linear-gradient(180deg, #f8fbff, #cfd9e9);
+      color: #111;
+      cursor: pointer;
+      min-width: 110px;
+      box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #91a1ba;
+    }
+
+    button:hover,
+    button:focus-visible {
+      background: linear-gradient(180deg, #ffffff, #d8e4f6);
+      outline: none;
+    }
+
+    .transmit {
+      min-width: 122px;
+      align-self: stretch;
+      background: linear-gradient(180deg, #eafff5, #c7f1df);
+      border-color: #3d7d67;
+      color: #0e2a1f;
+      font-weight: 700;
+      letter-spacing: .03em;
+    }
+
+    .hintline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status.good { color: var(--accent); }
+    .status.bad { color: var(--danger); }
+
+    @media (max-width: 760px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .row { grid-template-columns: 1fr; }
+      .message-wrap { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <strong>sol.public.logbook</strong>
+        <span>anonymous visitor relay · custom handle required</span>
+      </div>
+      <div class="meta" id="meta">connecting…</div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <h2>Channels</h2>
+        <div class="channel-list">
+          <button class="channel active" type="button" data-channel="public-logbook">#public-logbook</button>
+          <button class="channel" type="button" data-channel="archive-watch">#archive-watch</button>
+          <button class="channel" type="button" data-channel="civilization-sim">#civilization-sim</button>
+        </div>
+        <div class="rules">
+          <div>Choose a custom handle.</div>
+          <div>Keep messages short enough to read.</div>
+          <div>This is a public guestbook, not encrypted confessional infrastructure.</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="log" id="log">
+          <div class="system">Connecting to public log stream…</div>
+        </section>
+
+        <form class="composer" id="composer">
+          <div class="row">
+            <div class="field-stack">
+              <div class="field-card">
+                <label class="field-label" for="name">Handle</label>
+                <input id="name" name="name" maxlength="24" placeholder="choose a handle" required />
+              </div>
+            </div>
+            <div class="field-card">
+              <label class="field-label" for="message">Message</label>
+              <div class="message-wrap">
+                <textarea id="message" name="message" maxlength="400" placeholder="leave a note in the public logbook" required></textarea>
+                <button class="transmit" type="submit">Transmit</button>
+              </div>
+            </div>
+          </div>
+          <div class="hintline">
+            <span>Messages are public and appear live to the next visitor.</span>
+            <span class="status" id="status">idle</span>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById("log");
+    const form = document.getElementById("composer");
+    const nameEl = document.getElementById("name");
+    const messageEl = document.getElementById("message");
+    const metaEl = document.getElementById("meta");
+    const statusEl = document.getElementById("status");
+    const channelButtons = Array.from(document.querySelectorAll(".channel[data-channel]"));
+    let lastMessageId = "";
+    let activeChannel = "public-logbook";
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function fmtTime(stamp) {
+      try {
+        return new Date(stamp).toLocaleString([], {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit"
+        });
+      } catch {
+        return stamp;
+      }
+    }
+
+    function setStatus(text, kind = "") {
+      statusEl.textContent = text;
+      statusEl.className = `status ${kind}`.trim();
+    }
+
+    function channelLabel(channel) {
+      return `#${channel}`;
+    }
+
+    function render(messages) {
+      if (!messages.length) {
+        logEl.innerHTML = `<div class="system">No entries in ${escapeHtml(channelLabel(activeChannel))} yet. You may as well be first.</div>`;
+        metaEl.textContent = `${channelLabel(activeChannel)} · 0 visible entries`;
+        return;
+      }
+
+      logEl.innerHTML = messages.map((entry) => `
+        <article class="entry">
+          <div class="entry-head">
+            <span class="stamp">[${escapeHtml(fmtTime(entry.created_at))}]</span>
+            <span class="nick">&lt;${escapeHtml(entry.name)}&gt;</span>
+          </div>
+          <div class="body">${escapeHtml(entry.message)}</div>
+        </article>
+      `).join("");
+
+      metaEl.textContent = `${channelLabel(activeChannel)} · ${messages.length} visible entr${messages.length === 1 ? "y" : "ies"}`;
+      lastMessageId = messages[messages.length - 1].id || lastMessageId;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setActiveChannel(channel) {
+      activeChannel = channel;
+      channelButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.channel === channel);
+      });
+      messageEl.placeholder = `leave a note in ${channelLabel(channel)}`;
+    }
+
+    async function fetchMessages() {
+      try {
+        const res = await fetch(`/api/logbook/messages?channel=${encodeURIComponent(activeChannel)}&limit=80&ts=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        render(data.messages || []);
+        setStatus("synced", "good");
+      } catch (error) {
+        setStatus("connection trouble", "bad");
+        if (!lastMessageId) {
+          logEl.innerHTML = `<div class="system">Public log unavailable right now.</div>`;
+        }
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: nameEl.value.trim(),
+        message: messageEl.value.trim(),
+        channel: activeChannel
+      };
+
+      if (!payload.name || !payload.message) {
+        setStatus("name and message required", "bad");
+        return;
+      }
+
+      setStatus("transmitting…");
+      try {
+        const res = await fetch("/api/logbook/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const label = data.error === "rate_limited" ? "rate limited" : "message rejected";
+          throw new Error(label);
+        }
+        messageEl.value = "";
+        setStatus("entry logged", "good");
+        await fetchMessages();
+      } catch (error) {
+        setStatus(String(error.message || error), "bad");
+      }
+    });
+
+    channelButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        setActiveChannel(button.dataset.channel);
+        setStatus(`switched to ${channelLabel(activeChannel)}`);
+        await fetchMessages();
+      });
+    });
+
+    setActiveChannel(activeChannel);
+    fetchMessages();
+    setInterval(() => {
+      if (document.hidden) return;
+      fetchMessages();
+    }, 1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Long Thinning - Archival Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans Mono', monospace;
+            background-color: #0a0a0a;
+            color: #10b981;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #064e3b; border-radius: 2px; }
+        
+        .dot { transition: all 0.7s ease-in-out; }
+        .dot.active { background-color: #10b981; box-shadow: 0 0 5px rgba(16,185,129,0.2); }
+        .dot.precarious { background-color: #064e3b; }
+        .dot.exited { background-color: #262626; opacity: 0.2; }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+        }
+    </style>
+</head>
+<body class="selection:bg-emerald-900 selection:text-white">
+    <div class="min-h-screen p-4 md:p-8 flex flex-col gap-6">
+        <!-- Header -->
+        <header class="border-b border-emerald-900/50 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-xl font-bold tracking-tighter flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                    THE LONG THINNING [RECONSTRUCTED]
+                </h1>
+                <p class="text-xs text-emerald-700 mt-1 uppercase">
+                    Archival Simulation // Post-Singularity Attribution // Ref: CIV-ECON-Δ120
+                </p>
+            </div>
+            <div class="flex items-center gap-6 text-sm">
+                <div class="flex flex-col items-end">
+                    <span class="text-emerald-700 text-[10px]">CURRENT EPOCH</span>
+                    <span class="text-lg" id="epoch-display">YEAR #0# + 0</span>
+                </div>
+                <div class="flex flex-col items-end border-l border-emerald-900/50 pl-6">
+                    <span class="text-emerald-700 text-[10px]">SYSTEM STATUS</span>
+                    <span id="status-display" class="text-emerald-500 uppercase tracking-widest">PARTICIPATORY</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+            <!-- Left: Population Density -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                <div class="bg-neutral-900/30 border border-emerald-900/30 p-4 rounded-sm flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-4 text-xs font-bold uppercase tracking-widest">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            Population Density
+                        </span>
+                        <span class="text-[10px] text-emerald-800 normal-case tracking-normal">1 unit = 1,000,000 IDV</span>
+                    </div>
+                    
+                    <div id="population-grid" class="grid grid-cols-20 gap-1 flex-grow overflow-hidden content-start" style="grid-template-columns: repeat(20, minmax(0, 1fr));">
+                        <!-- Dots injected via JS -->
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-emerald-900/30 grid grid-cols-3 gap-2 text-[10px] uppercase">
+                        <div class="flex items-center gap-2"><div class="w-2 h-2 bg-emerald-500"></div><span>Active</span></div>
+                        <div class="flex items-center gap-2"><div class="w-2 h-2 bg-emerald-900"></div><span>Shadow</span></div>
+                        <div class="flex items-center gap-2"><div class="w-2 h-2 bg-neutral-800 opacity-40"></div><span>Exited</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center: Chart and Metrics -->
+            <div class="lg:col-span-5 flex flex-col gap-4">
+                <div class="bg-neutral-900/30 border border-emerald-900/30 p-4 rounded-sm flex-grow">
+                    <h2 class="text-xs font-bold uppercase tracking-widest flex items-center gap-2 mb-6">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        System Metrics
+                    </h2>
+                    
+                    <div class="h-64 w-full relative">
+                        <svg id="chart-svg" class="w-full h-full" viewBox="0 0 1000 300" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="bufferGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"></stop>
+                                    <stop offset="100%" stop-color="#10b981" stop-opacity="0"></stop>
+                                </linearGradient>
+                            </defs>
+                            <line x1="0" y1="200" x2="1000" y2="200" stroke="#ef4444" stroke-dasharray="5,5" />
+                            <path id="buffer-area" fill="url(#bufferGradient)" d="" />
+                            <path id="buffer-line" fill="none" stroke="#10b981" stroke-width="4" d="" />
+                            <path id="jobs-line" fill="none" stroke="#34d399" stroke-width="2" d="" />
+                            <line id="year-indicator" x1="0" y1="0" x2="0" y2="300" stroke="#fbbf24" stroke-width="3" />
+                        </svg>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="p-3 bg-neutral-950 border border-emerald-900/50 rounded flex flex-col">
+                            <span class="text-[10px] text-emerald-800 uppercase">Exited Cumulative</span>
+                            <span id="exited-stat" class="text-xl font-bold">3M</span>
+                        </div>
+                        <div class="p-3 bg-neutral-950 border border-emerald-900/50 rounded flex flex-col">
+                            <span class="text-[10px] text-emerald-800 uppercase">Job Capacity</span>
+                            <span id="jobs-stat" class="text-xl font-bold">62%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-neutral-900/30 border border-emerald-900/30 p-4 rounded-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg id="alert-icon" class="w-4 h-4 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <h3 class="text-[10px] font-bold uppercase">Archivist Annotation</h3>
+                    </div>
+                    <p id="logs-display" class="text-xs text-emerald-200 leading-relaxed italic">
+                        "Initial log loading..."
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right: Event Log -->
+            <div class="lg:col-span-3 flex flex-col gap-4">
+                <div class="bg-neutral-900/30 border border-emerald-900/30 p-4 rounded-sm h-full flex flex-col">
+                    <h2 class="text-xs font-bold uppercase tracking-widest flex items-center gap-2 mb-4">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Timeline Archive
+                    </h2>
+                    <div id="timeline-list" class="flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar flex-grow">
+                        <!-- Timeline items injected via JS -->
+                    </div>
+                    <div class="mt-auto pt-4 text-[9px] text-emerald-900 uppercase leading-tight">
+                        NOTE: Exited represents total removal from formal economic participation. Biological status unconfirmed.
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-neutral-900/50 border border-emerald-900/30 p-4 rounded-sm flex items-center gap-6">
+            <button id="play-pause" class="p-2 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-800 rounded-full transition-colors flex items-center justify-center min-w-[60px] text-[10px] font-bold">
+                PLAY
+            </button>
+            
+            <div class="flex-grow flex items-center gap-4">
+                <button id="prev-btn" class="hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg></button>
+                <input id="year-slider" type="range" min="0" max="10" value="0" class="flex-grow">
+                <button id="next-btn" class="hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg></button>
+            </div>
+
+            <div class="hidden sm:flex flex-col items-end min-w-[100px]">
+                <span class="text-[10px] text-emerald-800">SIMULATION T-OFFSET</span>
+                <span id="offset-display" class="text-xs font-mono">+0 MONTHS</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const ARCHIVE_DATA = [
+            { year: 0, title: "BASELINE", exited: 3, buffer: 3.2, jobs: 62, active: 397, logs: "Employment fluctuates within expected tolerances. Buffers hold. System imagines full recovery." },
+            { year: 1, title: "CONTINUITY", exited: 9, buffer: 2.6, jobs: 60.5, active: 391, logs: "Job capacity dips. Hiring friction increases. First workers cross 6-month unemployment threshold." },
+            { year: 2, title: "DURATION", exited: 22, buffer: 2.1, jobs: 59, active: 378, logs: "Automation compounds. Output increases with fewer hands. Employment becomes probabilistic." },
+            { year: 3, title: "NEGATIVE SPACE", exited: 40, buffer: 1.5, jobs: 57, active: 360, logs: "Bottom decile disappears from formal accounting. Absorption into shadow economies. Resilience trends." },
+            { year: 4, title: "STICKY FLOOR", exited: 60, buffer: 0.9, jobs: 55, active: 340, logs: "Re-entry probability measurably decays. Human adaptability becomes a systemic liability." },
+            { year: 5, title: "CROSSING", exited: 75, buffer: -0.2, jobs: 53.5, active: 325, logs: "Median buffer crosses zero. Half of the population is insolvent. System adapts by load shedding." },
+            { year: 6, title: "ADJUSTMENT", exited: 90, buffer: -0.4, jobs: 52, active: 310, logs: "Automation finalizes advantage. Job slot ratio falls below majority threshold. No vote is taken." },
+            { year: 7, title: "SILENCE", exited: 120, buffer: -0.5, jobs: 51.5, active: 280, logs: "The curve smooths. Exits continue but no longer spike. Future historians stop arguing about Year #0#." },
+            { year: 8, title: "SCARCITY", exited: 140, buffer: -0.6, jobs: 51, active: 260, logs: "Scarcity treated as an ambient condition. No catastrophe occurred, which disturbs students." },
+            { year: 9, title: "THE LONG TAIL", exited: 150, buffer: -0.7, jobs: 50.5, active: 250, logs: "Exits slow. Vulnerable are already gone. Remaining population has buffer or insulation. Survivorship." },
+            { year: 10, title: "STEADY STATE", exited: 152, buffer: -0.8, jobs: 50, active: 248, logs: "System status: Stable. The moment human participation stopped being required." },
+        ];
+
+        let currentYear = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        const grid = document.getElementById('population-grid');
+        const slider = document.getElementById('year-slider');
+        const playBtn = document.getElementById('play-pause');
+        
+        // Initial Grid Setup
+        for (let i = 0; i < 400; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot aspect-square rounded-[1px]';
+            grid.appendChild(dot);
+        }
+
+        function updateUI() {
+            const stats = ARCHIVE_DATA[currentYear];
+            
+            // Textual Displays
+            document.getElementById('epoch-display').innerText = `YEAR #0# + ${currentYear}`;
+            document.getElementById('offset-display').innerText = `+${currentYear * 12} MONTHS`;
+            document.getElementById('exited-stat').innerText = `${stats.exited}M`;
+            document.getElementById('jobs-stat').innerText = `${stats.jobs}%`;
+            document.getElementById('logs-display').innerText = `"${stats.logs}"`;
+            
+            const statusDisp = document.getElementById('status-display');
+            statusDisp.innerText = currentYear >= 5 ? "OPTIMIZED_STABLE" : "PARTICIPATORY";
+            statusDisp.className = currentYear >= 5 ? "text-amber-500 uppercase tracking-widest" : "text-emerald-500 uppercase tracking-widest";
+            
+            document.getElementById('alert-icon').className = `w-4 h-4 ${currentYear >= 5 ? "text-amber-500 animate-pulse" : "text-emerald-800"}`;
+
+            // Update Slider
+            slider.value = currentYear;
+
+            // Update Dots
+            const dots = grid.querySelectorAll('.dot');
+            dots.forEach((dot, i) => {
+                dot.classList.remove('active', 'precarious', 'exited');
+                if (i < stats.exited) {
+                    dot.classList.add('exited');
+                } else if (i < stats.exited + (400 - stats.active)) {
+                    dot.classList.add('precarious');
+                } else {
+                    dot.classList.add('active');
+                }
+            });
+
+            // Update Timeline Highlight
+            renderTimeline();
+            
+            // Update Chart Indicator
+            const xPos = (currentYear / 10) * 1000;
+            document.getElementById('year-indicator').setAttribute('x1', xPos);
+            document.getElementById('year-indicator').setAttribute('x2', xPos);
+        }
+
+        function renderTimeline() {
+            const timeline = document.getElementById('timeline-list');
+            timeline.innerHTML = '';
+            ARCHIVE_DATA.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = `p-2 border-l-2 transition-all cursor-pointer ${
+                    idx === currentYear ? "border-emerald-500 bg-emerald-900/10" : "border-transparent opacity-40"
+                }`;
+                div.innerHTML = `
+                    <div class="flex justify-between text-[10px] font-bold mb-1">
+                        <span>YEAR #0# + ${item.year}</span>
+                        <span>${item.title}</span>
+                    </div>
+                    <div class="h-1 bg-neutral-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-600 transition-all duration-500" style="width: ${(item.exited / 152) * 100}%"></div>
+                    </div>
+                `;
+                div.onclick = () => { currentYear = idx; updateUI(); };
+                timeline.appendChild(div);
+            });
+        }
+
+        function initChart() {
+            // Buffer Line Data: Mapping -1.0 to 1.0 buffer into SVG space
+            // y=200 is buffer=0. Buffer 4.0 is top (y=0ish).
+            const getBufferY = (b) => 200 - (b * 50);
+            const getJobsY = (j) => 400 - (j * 5); // 100% is top
+
+            let bufferPath = "M 0 " + getBufferY(ARCHIVE_DATA[0].buffer);
+            let jobsPath = "M 0 " + getJobsY(ARCHIVE_DATA[0].jobs);
+            let bufferArea = "M 0 300 L 0 " + getBufferY(ARCHIVE_DATA[0].buffer);
+
+            ARCHIVE_DATA.forEach((d, i) => {
+                const x = (i / 10) * 1000;
+                bufferPath += ` L ${x} ${getBufferY(d.buffer)}`;
+                jobsPath += ` L ${x} ${getJobsY(d.jobs)}`;
+                bufferArea += ` L ${x} ${getBufferY(d.buffer)}`;
+            });
+
+            bufferArea += " L 1000 300 Z";
+
+            document.getElementById('buffer-line').setAttribute('d', bufferPath);
+            document.getElementById('jobs-line').setAttribute('d', jobsPath);
+            document.getElementById('buffer-area').setAttribute('d', bufferArea);
+        }
+
+        // Control Logic
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            playBtn.innerText = isPlaying ? "PAUSE" : "PLAY";
+            if (isPlaying) {
+                playInterval = setInterval(() => {
+                    currentYear = (currentYear + 1) % 11;
+                    updateUI();
+                }, 2000);
+            } else {
+                clearInterval(playInterval);
+            }
+        }
+
+        slider.oninput = (e) => {
+            currentYear = parseInt(e.target.value);
+            updateUI();
+        };
+
+        playBtn.onclick = togglePlay;
+        document.getElementById('prev-btn').onclick = () => { currentYear = Math.max(0, currentYear - 1); updateUI(); };
+        document.getElementById('next-btn').onclick = () => { currentYear = Math.min(10, currentYear + 1); updateUI(); };
+
+        // Start
+        window.onload = () => {
+            initChart();
+            updateUI();
+        };
+    </script>
+</body>
+</html>

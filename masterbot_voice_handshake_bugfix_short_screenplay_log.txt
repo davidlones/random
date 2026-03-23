@@ -1,0 +1,64 @@
+MASTERBOT RUNTIME BUG LOG — SHORT SCREENPLAY
+
+INT. SERVER ROOM — LATE AFTERNOON
+
+A cursor blinks in a pinned console. Four voice channels wait in silence.
+
+NARRATOR (V.O.)
+We chased a ghost in the handshake.
+
+Connect.
+Endpoint found.
+Immediate drop.
+Code 4017.
+Again.
+Again.
+
+CUT TO: TERMINAL SPLIT SCREEN
+
+One pane says this might be region drift.
+Another says session invalid.
+Both are right, but not complete.
+
+We test it clean:
+- minimal client
+- no playback
+- one channel
+- A/B on rtc_region
+
+Result:
+DFW fails.
+LAX fails.
+Region override does not save it.
+
+CUT TO: PACKAGE LAYER
+
+discord.py 2.6.4 stays unstable.
+Upgraded to 2.7.1.
+Installed davey.
+Ran the same probe.
+
+Voice connection complete.
+No loop storm.
+No immediate teardown.
+
+CUT TO: LIVE SYSTEM
+
+masterbroadcast executes full fanout.
+All four targets connect first attempt.
+Eight chunks delivered.
+Service resumes.
+
+The fix was not mystical.
+It was compatibility.
+Transport moved.
+Client had to move with it.
+
+FINAL FRAME
+
+Boot intros restored.
+Screenplay intro removed from boot block and returned to normal rotation.
+System stable.
+Cursor blinking.
+
+END LOG.

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sol‑37 // Notes from a Noisy Universe</title>
+<meta name="description" content="A single-file blog post with an embedded ElevenLabs player, an ambient thought-field, and short essays about algorithms, house phones, and pocket universes made of plasma." />
+<link rel="preconnect" href="https://elevenlabs.io" />
+<style>
+  :root {
+    --bg: #0b0c10;
+    --fg: #e6f1ff;
+    --muted: #9fb4cc;
+    --card: #12141a;
+    --accent: #7dd3fc;
+    --accent-2: #a78bfa;
+    --ring: 0 0 0 2px rgba(125, 211, 252, 0.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    color: var(--fg);
+    background: radial-gradient(1200px 600px at 20% 10%, rgba(125,211,252,0.07), transparent 60%),
+                radial-gradient(1000px 800px at 80% 60%, rgba(167,139,250,0.07), transparent 60%),
+                var(--bg);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  header {
+    display: grid;
+    gap: 10px;
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  header:before {
+    content: "";
+    position: absolute;
+    inset: -40% -20%;
+    background: radial-gradient(800px 400px at 10% 0%, rgba(125,211,252,0.06), transparent 60%),
+                radial-gradient(800px 400px at 90% 50%, rgba(167,139,250,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .title { font-size: clamp(28px, 3vw, 42px); margin: 0; line-height: 1.2; }
+  .sub { color: var(--muted); margin: 0; font-size: 14px; }
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: #0f1117;
+    color: var(--fg);
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .2s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+  .post-card {
+    margin-top: 22px;
+    padding: 22px;
+    border-radius: 18px;
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .post-card h2 { margin-top: 8px; margin-bottom: 8px; font-size: 22px; }
+  .post-card p { color: #cfe3ff; }
+  .hr { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); margin: 24px 0; }
+  /* Ambient thought field */
+  #thoughts {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+  .footer {
+    margin: 36px 0 18px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  code.inline {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.95em;
+  }
+  /* ElevenLabs container nudge */
+  .audio-wrap {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #0f1117;
+    border-radius: 14px;
+    padding: 8px;
+  }
+</style>
+<link rel="stylesheet" href="https://latest.cactus.chat/style.css" type="text/css">
+<script type="text/javascript" src="https://latest.cactus.chat/cactus.js"></script>
+</head>
+<body>
+<canvas id="thoughts" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <header>
+    <h1 class="title">Sol‑37 // Notes from a Noisy Universe</h1>
+    <p class="sub">November 06, 2025 · field notes on algorithms, attention, and tiny universes that fit in a sink drain</p>
+    <div class="controls">
+      <button class="btn" id="toggleMode" title="Toggle dark / light">Toggle theme</button>
+      <button class="btn" id="toggleField" title="Pause the ambient thought-field">Pause ambient</button>
+      <a class="btn" href="#listen" title="Jump to audio">Jump to audio</a>
+    </div>
+  </header>
+
+  <div class="post-card" id="listen">
+    <h2>Listen</h2>
+    <p class="sub">Narration, powered by ElevenLabs. If you prefer text, scroll on.</p>
+    <div class="audio-wrap">
+      <!-- ElevenLabs AudioNative Widget (as provided) -->
+      <div id="elevenlabs-audionative-widget" data-height="90" data-width="100%" data-frameborder="no" data-scrolling="no" data-publicuserid="905bad9a374174de2ca6efef893ac3e8f4fb65df693ab82a8007a8a820e6ea61" data-playerurl="https://elevenlabs.io/player/index.html" >Loading the <a href="https://elevenlabs.io/text-to-speech" target="_blank" rel="noopener">Elevenlabs Text to Speech</a> AudioNative Player...</div>
+      <script src="https://elevenlabs.io/player/audioNativeHelper.js" type="text/javascript"></script>
+    </div>
+  </div>
+
+  <div class="post-card">
+    <h2>Algorithmic Echoes</h2>
+    <p>
+      Your feed is a mirror with a memory. Every pause, like, or grumpy doom‑scroll nudge writes a small note in the mirror’s log.
+      Interact with outrage and the system infers you’re hungry for more of it. Interact with curiosity and the system surfaces
+      adjacent curiosities. The simplest way to diversify a feed is to <em>behave</em> like someone who has a varied diet.
+      That doesn’t mean self‑harm via perpetual combat; it means ritualizing frictionless serendipity: save one new source each day,
+      visit one opposing viewpoint each week, and seed your scroll with topics you want future‑you to see.
+    </p>
+    <div class="hr"></div>
+    <p>
+      Platforms optimize for attention, not understanding. So we build our own counter‑weights: small habits that reward nuance,
+      links that lead off‑platform to primary sources, and the occasional long, slow read to reset the brain’s sampling rate.
+    </p>
+  </div>
+
+  <div class="post-card">
+    <h2>House Phone, Again (But On Purpose)</h2>
+    <p>
+      An 11‑year‑old proposes a “phone for the house”—a headset taped to a USB numpad, a tablet on the TV, a living room reborn as
+      a commons. The idea isn’t retro; it’s architectural. Put the conversation where people can join it. When tools migrate to private
+      rooms, attention atomizes. A communal terminal flips the gradient back: shared rituals, shared playlists, and the low‑friction
+      hello of “pass me the remote I want to call grandma.”
+    </p>
+    <p>
+      The tech is simple: screen‑cast a tablet, add a VoIP app, give the interface oversized, tactile affordances. The goal is not
+      <em>less</em> technology; it’s <em>more legible</em> technology.
+    </p>
+  </div>
+
+  <div class="post-card">
+    <h2>Relativistic Teacups & Pocket Universes</h2>
+    <p>
+      Imagine a torus of plasma skimming the speed limit of light—a ring wave hugging the surface of a star like a bright seam.
+      It’s a toy model, a thought‑experiment that asks: what happens when density, rotation, and resonance braid tight enough to
+      mimic a horizon? The universe loves thresholds. Sometimes a sink vortex and a stellar torus rhyme. Both are energy sorting
+      machines. Both whisper: structure is the memory of motion.
+    </p>
+    <p>
+      We don’t worship the metaphor; we work the model. Map where it breaks. Learn anyway.
+    </p>
+  </div>
+
+  <div class="post-card">
+    <h2>On Voices</h2>
+    <p>
+      One voice to speak; one voice to think. Dialogue for the human ear; narration for the human map.
+      When I read this aloud, I use the “dialogue” voice sparingly—like a highlighter—while the “narrator” voice
+      holds the thread. Two tracks, one story. The player above mixes them down to something shareable.
+    </p>
+  </div>
+
+  <div class="post-card">
+    <h2>Practical Bits</h2>
+    <ul>
+      <li>Dark/light theme: toggle it in the header. It sticks via <code class="inline">localStorage</code>.</li>
+      <li>Ambient thought‑field: a gentle particle drift. Pause if it’s distracting.</li>
+      <li>Self‑contained: just this file and the ElevenLabs widget.</li>
+    </ul>
+  </div>
+
+  
+  <section class="post-card" id="comments">
+    <h2>Comments</h2>
+    <div id="comment-section"></div>
+    <p class="sub">Federated via Matrix · Powered by <a href="https://cactus.chat/" target="_blank" rel="noopener">Cactus Comments</a></p>
+  </section>
+
+  <p class="footer">© November 06, 2025 · Sol‑37 field notes · CC‑BY 4.0 where applicable</p>
+</div>
+
+<script>
+// --- Theme toggle ---
+(function() {
+  const key = "sol37.theme";
+  const current = localStorage.getItem(key) || "dark";
+  const set = (mode) => {
+    if (mode === "light") {
+      document.documentElement.style.setProperty('--bg', '#f8fafc');
+      document.documentElement.style.setProperty('--fg', '#0b1020');
+      document.documentElement.style.setProperty('--muted', '#4b5563');
+      document.documentElement.style.setProperty('--card', '#ffffff');
+    } else {
+      document.documentElement.style.setProperty('--bg', '#0b0c10');
+      document.documentElement.style.setProperty('--fg', '#e6f1ff');
+      document.documentElement.style.setProperty('--muted', '#9fb4cc');
+      document.documentElement.style.setProperty('--card', '#12141a');
+    }
+    localStorage.setItem(key, mode);
+  };
+  set(current);
+  document.getElementById('toggleMode').addEventListener('click', () => {
+    const next = (localStorage.getItem(key) || "dark") === "dark" ? "light" : "dark";
+    set(next);
+  });
+})();
+
+
+// --- Ambient thought-field (particles) ---
+(function() {
+  const c = document.getElementById('thoughts');
+  const ctx = c.getContext('2d');
+  let running = true;
+  let w, h, dpr;
+  let pts = [];
+  const N = 140;
+
+  function resize() {
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    w = c.width = Math.floor(innerWidth * dpr);
+    h = c.height = Math.floor(innerHeight * dpr);
+    c.style.width = innerWidth + 'px';
+    c.style.height = innerHeight + 'px';
+    pts = Array.from({ length: N }, () => ({ 
+      x: Math.random() * w, 
+      y: Math.random() * h, 
+      z: Math.random() * 1 + 0.5,
+      vx: (Math.random() - 0.5) * 0.15, 
+      vy: (Math.random() - 0.5) * 0.15 
+    }));
+  }
+
+  function tick() {
+    if (!running) return;
+    ctx.clearRect(0, 0, w, h);
+    for (const p of pts) {
+      p.x += p.vx * p.z;
+      p.y += p.vy * p.z;
+      if (p.x < 0) p.x += w; else if (p.x > w) p.x -= w;
+      if (p.y < 0) p.y += h; else if (p.y > h) p.y -= h;
+      const r = 0.8 + p.z * 1.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(200,220,255,0.10)';
+      ctx.fill();
+    }
+    // soft tendrils
+    for (let i = 0; i < pts.length; i += 3) {
+      const a = pts[i], b = pts[(i+7) % pts.length];
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo((a.x+b.x)/2, (a.y+b.y)/2 - 40, b.x, b.y);
+      ctx.strokeStyle = 'rgba(160,200,255,0.05)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  resize();
+  addEventListener('resize', resize);
+  requestAnimationFrame(tick);
+
+  document.getElementById('toggleField').addEventListener('click', () => {
+    running = !running;
+    if (running) requestAnimationFrame(tick);
+  });
+})();
+</script>
+<script>
+// Initialize Cactus Comments (Matrix-based).
+// Replace SITE_NAME_HERE with the name you registered via @cactusbot:cactus.chat (e.g., "sol37").
+// commentSectionId uses the pathname so each page gets its own room.
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof initComments === 'function') {
+    initComments({
+      node: document.getElementById("comment-section"),
+      defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
+      serverName: "cactus.chat",
+      siteName: "SITE_NAME_HERE",
+      commentSectionId: window.location.pathname || "post"
+    });
+  }
+});
+</script>
+</body>
+</html>

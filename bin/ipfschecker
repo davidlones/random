@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cd ~/ipfsfiles
+
+ipfs refs local |
+while IFS= read -r line; do
+    ipfs get $line
+    file $line >> filetypes
+    rm $line
+done

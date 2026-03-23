@@ -1,0 +1,5 @@
+#!/bin/bash
+
+caffeinate  -u -t 5
+osascript -e "tell app \"System Events\" to key code 49
+beep"

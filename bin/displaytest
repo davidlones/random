@@ -1,0 +1,20 @@
+#!/bin/bash
+#_0853rv3r
+# IFS=$'\n'
+# list=$(xrandr --query)
+# listcount=$(echo $list | wc -l)
+
+# for i in $list
+# do
+#     echo $i | grep "-" | grep " conn" | grep -v "primary" | head -n1  | awk '{print $1;}'
+# done
+
+DISPLAY=:0; export DISPLAY; xrandr --output $(xrandr --query | grep "-" | grep " conn" | grep -v "primary" | head -n1  | awk '{print $1;}')  --off
+
+bash -c 'DISPLAY=:0; ; xrandr --output $(xrandr --query | grep "-" | grep " conn" | grep -v "primary" | head -n1  | awk '{print $1;}')  --off'
+
+
+#!/bin/bash
+DISPLAY=:0
+export DISPLAY
+xrandr --output $(xrandr --query | grep "-" | grep " conn" | grep -v "primary" | head -n1  | awk '{print $1;}')  --off

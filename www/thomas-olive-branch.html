@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Structural Fork: A Graphical Text Adventure</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#101826;
+      --panel2:#0e1522;
+      --text:#e9eef6;
+      --muted:#a9b6c7;
+      --line:rgba(233,238,246,.12);
+      --accent:#7cd4ff;
+      --accent2:#b5ff7c;
+      --warn:#ffcc66;
+      --bad:#ff7c9c;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --radius: 18px;
+      --maxw: 1220px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5; }
+    a{ color:inherit; }
+    .app{
+      min-height:100dvh;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(124,212,255,.12), transparent 60%),
+        radial-gradient(1000px 700px at 90% 20%, rgba(181,255,124,.08), transparent 55%),
+        radial-gradient(1000px 700px at 60% 95%, rgba(255,204,102,.06), transparent 55%),
+        var(--bg);
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 14px 18px;
+      border-bottom:1px solid var(--line);
+      background: rgba(16,24,38,.72);
+      backdrop-filter: blur(10px);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .title{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .title h1{ margin:0; font-size:14px; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .title .subtitle{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .controls{ display:flex; gap:8px; align-items:center; }
+    button,.pill{
+      border: 1px solid var(--line);
+      background: rgba(14,21,34,.65);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      min-height: 40px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform .06s ease, border-color .12s ease, background .12s ease;
+    }
+    button:hover{ border-color: rgba(124,212,255,.35); }
+    button:active{ transform: translateY(1px); }
+    .pill{ cursor:default; color:var(--muted); display:flex; gap:8px; align-items:center; }
+    .pill kbd{
+      font-family:var(--mono); font-size:11px;
+      padding:2px 6px; border:1px solid var(--line);
+      border-radius:8px; color:var(--text); background:rgba(0,0,0,.15);
+    }
+
+    main{
+      padding: 18px;
+      display:flex; justify-content:center; align-items:stretch;
+      overflow: hidden;
+    }
+    .frame{
+      width:min(var(--maxw), 100%);
+      height: calc(100dvh - 140px);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      main{ padding: 12px; }
+      .frame{
+        height:auto;
+        grid-template-columns:1fr;
+        gap: 12px;
+      }
+      .panel{
+        min-height: unset;
+      }
+      footer{
+        padding: 10px 12px 14px;
+      }
+      .progress{
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 680px){
+      header{
+        padding: 12px;
+      }
+      .title h1{
+        font-size: 13px;
+        white-space: normal;
+      }
+      .title .subtitle{
+        white-space: normal;
+      }
+      .controls{
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+      .pill{
+        width: 100%;
+        justify-content: center;
+      }
+      .scene-title{
+        font-size: clamp(20px, 7vw, 24px);
+      }
+      .narrative{
+        font-size: 15px;
+        line-height: 1.7;
+      }
+      .choice{
+        font-size: 14px;
+        padding: 12px;
+      }
+      .panel header h2{
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      svg{
+        height: 300px;
+      }
+    }
+
+    .panel{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(16,24,38,.86), rgba(14,21,34,.86));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: 420px;
+    }
+    .panel header{
+      border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,.12);
+      backdrop-filter: none;
+      padding: 12px 14px;
+    }
+    .panel header h2{
+      margin:0; font-size:13px; color:rgba(233,238,246,.92); letter-spacing:.2px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .panel header h2 span.small{
+      font-size:12px; color:var(--muted); font-weight:500;
+    }
+
+    .scroll{
+      overflow:auto;
+      padding: 14px 14px 16px;
+    }
+
+    /* Story panel */
+    .scene-title{
+      font-size: 22px;
+      margin: 4px 0 8px;
+      line-height:1.15;
+      letter-spacing:.2px;
+    }
+    .scene-meta{
+      display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 12px;
+    }
+    .tag{
+      font-size:12px;
+      color: rgba(233,238,246,.88);
+      border:1px solid var(--line);
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,.12);
+    }
+    .tag.good{ border-color: rgba(181,255,124,.25); background: rgba(181,255,124,.08); }
+    .tag.warn{ border-color: rgba(255,204,102,.25); background: rgba(255,204,102,.08); }
+    .tag.bad{ border-color: rgba(255,124,156,.25); background: rgba(255,124,156,.08); }
+
+    .narrative{
+      color: rgba(233,238,246,.92);
+      font-size: clamp(15px, 1.25vw, 17px);
+      line-height: 1.6;
+      margin-bottom: 14px;
+      white-space: pre-wrap;
+    }
+
+    .choices{
+      display:grid;
+      gap:10px;
+      margin-top: 10px;
+    }
+    .choice{
+      text-align:left;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.14);
+      padding: 12px 12px;
+      font-size: 13px;
+      line-height: 1.35;
+      cursor:pointer;
+      transition: border-color .12s ease, transform .06s ease, background .12s ease;
+    }
+    .choice:hover{
+      border-color: rgba(124,212,255,.35);
+      background: rgba(124,212,255,.06);
+    }
+    .choice:active{ transform: translateY(1px); }
+    .choice strong{ color: var(--accent); }
+    .choice small{ display:block; color: var(--muted); margin-top: 3px; }
+
+    .divider{
+      height:1px;
+      background: var(--line);
+      margin: 14px 0;
+    }
+
+    /* Map panel */
+    .mapWrap{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .mapBar{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    }
+    .mapBar button{ padding: 8px 10px; }
+    .mapLegend{
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-left:auto;
+      display:flex; gap:10px; align-items:center;
+      flex-wrap:wrap;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px; display:inline-block;
+      border:1px solid var(--line);
+      background: rgba(124,212,255,.18);
+    }
+    .dot.good{ background: rgba(181,255,124,.22); border-color: rgba(181,255,124,.3); }
+    .dot.warn{ background: rgba(255,204,102,.22); border-color: rgba(255,204,102,.3); }
+    .dot.bad{ background: rgba(255,124,156,.22); border-color: rgba(255,124,156,.3); }
+
+    svg{ width:100%; height: 360px; border-radius: 14px; border:1px solid var(--line); background: rgba(0,0,0,.14); }
+    .node rect, .node polygon{
+      fill: rgba(124,212,255,.08);
+      stroke: rgba(124,212,255,.65);
+      stroke-width: 1.4;
+      cursor: pointer;
+    }
+    .node.decision polygon{
+      stroke: rgba(255,204,102,.8);
+      fill: rgba(255,204,102,.10);
+    }
+    .node.active rect, .node.active polygon{
+      fill: rgba(181,255,124,.18);
+      stroke-width: 2.6;
+      stroke: rgba(181,255,124,.8);
+    }
+    .node.locked rect, .node.locked polygon{ opacity:.28; cursor:not-allowed; }
+    .node text{ fill: rgba(233,238,246,.92); font-size: 12px; pointer-events:none; }
+    .edge{
+      stroke: rgba(233,238,246,.18);
+      stroke-width: 2;
+      marker-end: url(#arrow);
+    }
+    .edge.alt{ stroke-dasharray: 6 6; stroke: rgba(255,204,102,.35); }
+    .edge.analogy{ stroke-dasharray: 6 6; stroke: rgba(181,255,124,.35); marker-end: none; }
+    .edge.active{ stroke: rgba(124,212,255,.65); }
+    .edge.chosen{ stroke: rgba(181,255,124,.75); }
+
+    .inspector{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(0,0,0,.14);
+      padding: 12px 12px;
+    }
+    .inspector h3{ margin: 0 0 6px; font-size: 13px; color: rgba(233,238,246,.92); }
+    .inspector p{ margin: 0; font-size: 13px; color: rgba(233,238,246,.84); line-height: 1.5; }
+    .inspector .mini{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    /* Codex / log */
+    .logEntry{
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(0,0,0,.14);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .logEntry .k{
+      font-family: var(--mono);
+      color: rgba(233,238,246,.88);
+      font-size: 11px;
+      opacity:.9;
+    }
+    .logEntry .v{
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(233,238,246,.86);
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    footer{
+      display:flex; justify-content:space-between; align-items:center;
+      padding: 10px 18px calc(14px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(16,24,38,.62);
+      backdrop-filter: blur(10px);
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+    .status{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      color: var(--muted); font-size: 12px;
+    }
+    .status kbd{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(0,0,0,.15);
+    }
+    .progress{
+      width: 260px;
+      max-width: 100%;
+      height: 8px;
+      background: rgba(233,238,246,.08);
+      border-radius: 999px;
+      overflow:hidden;
+      border: 1px solid rgba(233,238,246,.10);
+    }
+    .bar{
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(124,212,255,.95), rgba(181,255,124,.85));
+      transition: width .18s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *, *::before, *::after{
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1 id="topTitle">Structural Fork: A Graphical Text Adventure</h1>
+        <div class="subtitle" id="topSub">A playable explainer for Thomas — history, systems, and the argument map</div>
+      </div>
+      <div class="controls">
+        <button id="btnRestart" title="Restart the run">Restart</button>
+        <button id="btnSave" title="Copy save code">Copy Save</button>
+        <button id="btnLoad" title="Paste save code">Load</button>
+        <span class="pill" title="Keyboard controls">
+          <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span style="opacity:.85">choose</span>
+          <kbd>M</kbd><span style="opacity:.85">map</span>
+          <kbd>L</kbd><span style="opacity:.85">log</span>
+        </span>
+      </div>
+    </header>
+
+    <main>
+      <div class="frame">
+        <!-- STORY -->
+        <section class="panel" id="storyPanel">
+          <header>
+            <h2>
+              <span>Scene</span>
+              <span class="small" id="runMeta">Run: 01 • Mode: Explore</span>
+            </h2>
+          </header>
+
+          <div class="scroll">
+            <div class="scene-title" id="sceneTitle">Loading…</div>
+            <div class="scene-meta" id="sceneTags"></div>
+            <div class="narrative" id="sceneText"></div>
+
+            <div class="divider"></div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <span class="tag" id="stanceTag">Stance: none</span>
+              <span class="tag" id="powerTag">Power risk: unknown</span>
+              <span class="tag" id="infraTag">Infrastructure: undefined</span>
+            </div>
+
+            <div class="choices" id="choices"></div>
+          </div>
+        </section>
+
+        <!-- MAP / INSPECTOR / LOG -->
+        <section class="panel" id="mapPanel">
+          <header>
+            <h2>
+              <span id="rightTitle">Map</span>
+              <span class="small" id="rightHint">Click nodes • Follow edges</span>
+            </h2>
+          </header>
+
+          <div class="scroll">
+            <div class="mapWrap">
+              <div class="mapBar">
+                <button id="btnToggleAlt">Toggle alternatives</button>
+                <button id="btnToggleAnalogy">Toggle analogy links</button>
+                <button id="btnFocusStory">Focus current</button>
+                <button id="btnShowLog">Show log</button>
+
+                <div class="mapLegend">
+                  <span><span class="dot good"></span> chosen path</span>
+                  <span><span class="dot warn"></span> alternative</span>
+                  <span><span class="dot"></span> available</span>
+                </div>
+              </div>
+
+              <svg id="flowSvg" viewBox="0 0 980 420" role="img" aria-label="Decision map">
+                <defs>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(233,238,246,.25)"></path>
+                  </marker>
+                </defs>
+
+                <!-- Edges -->
+                <g id="edges"></g>
+
+                <!-- Nodes -->
+                <g id="nodes"></g>
+              </svg>
+
+              <div class="inspector" id="inspector">
+                <h3>Inspector</h3>
+                <p>Select a node to see context and to jump the story there.</p>
+                <div class="mini" id="inspectorMini"></div>
+              </div>
+
+              <div id="logArea" style="display:none;">
+                <div class="divider"></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                  <span class="tag">Log</span>
+                  <button id="btnClearLog">Clear</button>
+                </div>
+                <div id="logList" style="margin-top:10px;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="status" id="statusLeft">
+        <span>Goal: turn disagreement into an explorable map</span>
+        <span style="opacity:.6">•</span>
+        <span><kbd>M</kbd> map focus</span>
+        <span><kbd>L</kbd> log</span>
+      </div>
+
+      <div class="progress" aria-label="progress">
+        <div class="bar" id="bar"></div>
+      </div>
+
+      <div class="status" id="statusRight">
+        <span id="counter">0 / 0 nodes visited</span>
+        <span style="opacity:.6">•</span>
+        <span><kbd>Esc</kbd> close log</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /***********************
+     * WORLD DATA (EDIT HERE)
+     ***********************/
+    const WORLD = {
+      meta: {
+        title: "Structural Fork: A Graphical Text Adventure",
+        subtitle: "History, systems, and the argument map (for Thomas)"
+      },
+
+      // Node graph (map + story anchor points)
+      nodes: {
+        // --- MODERN CAPITAL COLUMN (preserves 20th c → 2016 → 2020 points) ---
+        m0: {
+          title: "20th Century: Mass industrial society",
+          tags: ["Modern", "Background", "Industrial"],
+          stanceTag: "Stance: baseline",
+          powerTag: "Power risk: medium",
+          infraTag: "Infrastructure: national backbone",
+          text:
+`You enter the 20th century: mass production, mass consumption, mass logistics.
+
+The “deal” becomes familiar:
+• Workers sell labor (time, skill, ideas).
+• Owners hold productive assets (factories, rail, energy, distribution).
+• Government coordinates some infrastructure and sets rules of the game.
+
+This is where the modern argument begins: not “who owns people” (that’s forbidden), but “who owns the systems people must use.”`,
+          inspect:
+`Context: This is the starting state for the modern column. It’s not a villain monologue; it’s a system description.`,
+          choices: [
+            { label: "Follow capital mobility (late 20th c.)", hint: "Globalization, finance, regulatory shifts", go: "m1", effect: { visited: ["m1"] } },
+            { label: "Follow infrastructure & state role", hint: "What does government actually do?", go: "g1" },
+            { label: "Jump to polarization era", hint: "How did we reach 2016 & 2020 stress points?", go: "m5" }
+          ]
+        },
+
+        m1: {
+          title: "Late 20th c.: Capital mobility increases",
+          tags: ["Modern", "Finance", "Globalization"],
+          stanceTag: "Stance: descriptive",
+          powerTag: "Power risk: medium-high",
+          infraTag: "Infrastructure: global supply chains",
+          text:
+`Capital becomes more mobile than labor.
+
+Factories can relocate. Finance can reprice instantly. Supply chains stretch.
+
+This does not automatically “doom” workers — but it changes leverage:
+• Labor negotiates locally.
+• Capital increasingly negotiates globally.`,
+          inspect:
+`Mechanic: mobility is a bargaining advantage. It changes who can walk away first.`,
+          choices: [
+            { label: "Platform concentration emerges", hint: "Winner-take-most dynamics", go: "m3" },
+            { label: "Ask the fork question", hint: "Broad ownership vs concentrated ownership", go: "m2" },
+            { label: "Open analogy: 19th c. compromises", hint: "Postponement strategies repeat", go: "cw3" }
+          ]
+        },
+
+        m2: {
+          title: "Decision: Broad ownership or concentration?",
+          tags: ["Fork", "Policy", "Ownership"],
+          stanceTag: "Stance: choice point",
+          powerTag: "Power risk: depends",
+          infraTag: "Infrastructure: who controls access?",
+          text:
+`Fork point.
+
+Two broad paths:
+A) Broaden ownership and bargaining power (more distributed control of key nodes).
+B) Let ownership concentrate and patch symptoms later.
+
+This is where certain words get emotionally loaded (“redistribution”, “UBI”), even when the underlying question is stability.`,
+          inspect:
+`This is the “structural fork” in your flowchart — the part you and Thomas kept orbiting.`,
+          choices: [
+            { label: "Choose A: broaden ownership", hint: "Dividends, co-ops, public options, anti-monopoly", go: "m8A", effect: { flags: { modernPath: "broaden" } } },
+            { label: "Choose B: concentrate + patch", hint: "Partial policy responses, friction rises", go: "m4", effect: { flags: { modernPath: "patch" } } },
+            { label: "Detour: define 'infrastructure'", hint: "What counts? roads? zoning? utilities?", go: "g2" }
+          ]
+        },
+
+        m3: {
+          title: "Platform concentration: winner-take-most",
+          tags: ["Modern", "Platforms", "Nodes"],
+          stanceTag: "Stance: descriptive",
+          powerTag: "Power risk: high",
+          infraTag: "Infrastructure: private chokepoints",
+          text:
+`Platforms concentrate attention, logistics, and access.
+
+Owning the bottleneck becomes more important than owning “everything.”
+Warehousing, data centers, payments rails, housing portfolios — nodes that many people must pass through.`,
+          inspect:
+`Node logic: control does not require total ownership; it requires ownership of key constraints.`,
+          choices: [
+            { label: "Partial policy responses", hint: "Antitrust pressure, but uneven", go: "m4" },
+            { label: "Jump to 2016 narrative polarization", hint: "Politics reacts to stress", go: "m5" },
+            { label: "Compare with Missouri Compromise logic", hint: "Balance-by-patch dynamics", go: "cw4" }
+          ]
+        },
+
+        m4: {
+          title: "Partial policy responses",
+          tags: ["Modern", "Policy", "Patch"],
+          stanceTag: "Stance: contested",
+          powerTag: "Power risk: medium-high",
+          infraTag: "Infrastructure: mixed public/private",
+          text:
+`Responses arrive, but often as patches:
+• targeted benefits
+• subsidies
+• emergency programs
+• regulatory adjustments
+
+These can help — but if core access costs (housing, healthcare, energy, platforms) keep rising faster than wages, the system stays tense.`,
+          inspect:
+`This node is not “government bad” or “market bad.” It’s “patch vs restructure.”`,
+          choices: [
+            { label: "2016: narrative polarization", hint: "Legitimacy strain increases", go: "m5" },
+            { label: "2020: institutional trust strain", hint: "Stress test hits", go: "m6" },
+            { label: "Reframe debate: failures & constraints", hint: "Avoid loaded words", go: "a1" }
+          ]
+        },
+
+        m5: {
+          title: "2016: narrative polarization",
+          tags: ["Modern", "2016", "Legitimacy"],
+          stanceTag: "Stance: descriptive",
+          powerTag: "Power risk: high",
+          infraTag: "Infrastructure: info pipelines",
+          text:
+`2016 becomes a visible fracture:
+• polarization intensifies
+• distrust spikes
+• stories about “who’s cheating who” dominate
+
+When stability feels fragile, people stop arguing about policies and start arguing about legitimacy.`,
+          inspect:
+`This is an “information + trust” bottleneck. Once it narrows, every other system feels hostile.`,
+          choices: [
+            { label: "Continue to 2020 trust strain", hint: "Institutions take a hit", go: "m6" },
+            { label: "Detour: what government is for", hint: "Force vs stability vs infrastructure", go: "g1" },
+            { label: "Detour: 15-minute city panic", hint: "Village vs jargon vs autonomy fear", go: "a3" }
+          ]
+        },
+
+        m6: {
+          title: "2020: institutional trust strain",
+          tags: ["Modern", "2020", "Stress Test"],
+          stanceTag: "Stance: descriptive",
+          powerTag: "Power risk: high",
+          infraTag: "Infrastructure: resilience",
+          text:
+`2020 stress-tests everything at once:
+• supply chains
+• public health capacity
+• institutions
+• labor markets
+• information ecosystems
+
+Even people who disagree on causes often agree on the feeling: “the system isn’t built for this.”`,
+          inspect:
+`This node is about resilience. When resilience is low, people demand control OR they demand exit.`,
+          choices: [
+            { label: "Parallel systems emerge", hint: "Splintering vs re-coordination", go: "m7" },
+            { label: "Return to the structural fork", hint: "Broaden ownership vs patch", go: "m2" },
+            { label: "Compare: Dred Scott / legitimacy crisis", hint: "Institutions lose credibility", go: "cw6" }
+          ]
+        },
+
+        m7: {
+          title: "Parallel systems emerge",
+          tags: ["Modern", "Fragmentation", "Fork"],
+          stanceTag: "Stance: warning",
+          powerTag: "Power risk: very high",
+          infraTag: "Infrastructure: competing layers",
+          text:
+`When trust and affordability drop, people build parallel systems:
+• alternative media
+• alternative finance
+• alternative governance expectations
+• alternative community structures
+
+This is not automatically collapse — but it is a fork:
+Re-integrate under a new contract, or keep fragmenting.`,
+          inspect:
+`This is where “structural fork” stops being theoretical.`,
+          choices: [
+            { label: "Structural settlement", hint: "New social contract / ownership shift", go: "m9" },
+            { label: "Escalate fragmentation", hint: "Hard conflict / coercion risk rises", go: "m8B" },
+            { label: "Open the 'olive branch' framing", hint: "Shared goals, argue tools", go: "a1" }
+          ]
+        },
+
+        m8A: {
+          title: "Path A: broaden ownership (stability dividend)",
+          tags: ["Modern", "Outcome", "Broaden"],
+          stanceTag: "Stance: solution-space",
+          powerTag: "Power risk: medium",
+          infraTag: "Infrastructure: shared access + constraints",
+          text:
+`A plausible “broad ownership” package doesn’t require one magic word.
+
+It can be a blend:
+• anti-monopoly pressure on chokepoints
+• expanded employee ownership / co-ops
+• public options for essential services
+• land/resource dividends where appropriate
+• tax credits / negative income tax variants
+
+Goal: keep markets, reduce cascade failures, preserve autonomy.`,
+          inspect:
+`Notice the framing: “baseline stability” rather than “take from X.”`,
+          choices: [
+            { label: "Converge: new social contract", hint: "What changes structurally?", go: "m9" },
+            { label: "Revisit Thomas’s ‘military-only’ claim", hint: "Power paradox", go: "g1" },
+            { label: "Address 15-minute city distrust", hint: "Proximity ≠ control", go: "a3" }
+          ]
+        },
+
+        m8B: {
+          title: "Path B: fragmentation escalates",
+          tags: ["Modern", "Outcome", "Fragment"],
+          stanceTag: "Stance: caution",
+          powerTag: "Power risk: extreme",
+          infraTag: "Infrastructure: contested",
+          text:
+`When fragmentation escalates, coercion tends to rise:
+• stronger policing
+• stronger counter-systems
+• more scarcity narratives
+• more “us vs them” legitimacy fights
+
+This is the failure-mode branch. Not destiny — but a known attractor when trust collapses.`,
+          inspect:
+`This branch exists to make failure modes explicit, not to dramatize.`,
+          choices: [
+            { label: "Backtrack to the fork", hint: "Try structural settlement instead", go: "m7" },
+            { label: "Open the argument map", hint: "Stop fighting labels, define functions", go: "a1" },
+            { label: "Compare: secession logic", hint: "Legitimacy breaks → hard split", go: "cw7" }
+          ]
+        },
+
+        m9: {
+          title: "Structural settlement: a new social contract",
+          tags: ["Modern", "Outcome", "Settlement"],
+          stanceTag: "Stance: synthesis",
+          powerTag: "Power risk: medium-low",
+          infraTag: "Infrastructure: explicit + accountable",
+          text:
+`Settlement means: the system names its purpose and constraints.
+
+Not “government does everything,” but:
+• define what must be resilient (housing, health, energy, logistics, information integrity)
+• decide what’s private vs utility-like
+• distribute control of bottlenecks
+• create a baseline stability floor so coercion is less “necessary”
+
+This is where your “olive branch” lives: shared goals, then tools.`,
+          inspect:
+`If you want a single phrase: “stability guarantee under constrained power.”`,
+          choices: [
+            { label: "Play the olive-branch conversation", hint: "How to say it to Thomas", go: "a1" },
+            { label: "Switch to Civil War chain", hint: "See how postponement becomes conflict", go: "cw1" },
+            { label: "Restart from 20th c. baseline", hint: "Try another run", go: "m0" }
+          ]
+        },
+
+        // --- ARGUMENT MAP / OLIVE BRANCH NODES ---
+        a1: {
+          title: "Olive branch: what we’re actually debating",
+          tags: ["Argument", "Bridge", "Framing"],
+          stanceTag: "Stance: collaborative",
+          powerTag: "Power risk: depends on constraints",
+          infraTag: "Infrastructure: policy made concrete",
+          text:
+`Try this framing:
+
+“This isn’t about labels. We both want freedom and stability.
+The question is what minimal structures prevent cascade failures in a complex society.”
+
+Then define:
+• what government should do (functions)
+• what it should not do (constraints)
+• what must be resilient (infrastructure broadly defined)
+• how to prevent force from turning inward (accountability / decentralization / limits)
+
+Argue tools after you agree on functions.`,
+          inspect:
+`This is the “cool the argument into a design session” node.`,
+          choices: [
+            { label: "Define government functions", hint: "Force vs stability vs infrastructure", go: "g1" },
+            { label: "Define infrastructure (the real disagreement)", hint: "Roads? zoning? utilities? info?", go: "g2" },
+            { label: "Address 15-minute city panic", hint: "Village logic vs control fear", go: "a3" }
+          ]
+        },
+
+        a3: {
+          title: "15-minute cities: village logic, bad branding",
+          tags: ["Argument", "Urbanism", "Autonomy"],
+          stanceTag: "Stance: defuse",
+          powerTag: "Power risk: about intent, not geometry",
+          infraTag: "Infrastructure: proximity model",
+          text:
+`“15-minute city” is proximity planning jargon. “Village” is cultural memory.
+
+Same topology, different emotional payload.
+
+The fear isn’t actually density — it’s autonomy:
+• “Will I be restricted?”
+• “Will I be forced to rent?”
+• “Will control consolidate?”
+
+Key distinction:
+Proximity = where things are.
+Ownership = who controls them.
+
+You can have dense owner-occupied neighborhoods.
+You can have rural company-town dependence.
+Distance doesn’t automatically protect autonomy; distributed ownership and alternatives do.`,
+          inspect:
+`Use the move: “Do you want daily life to require long travel, or do you prefer local options?”`,
+          choices: [
+            { label: "Return to 2016 info-trust bottleneck", hint: "How narratives attach to jargon", go: "m5" },
+            { label: "Define infrastructure again", hint: "Zoning is infrastructure in slow motion", go: "g2" },
+            { label: "Back to the fork", hint: "Broad ownership vs patch responses", go: "m2" }
+          ]
+        },
+
+        // --- GOVERNMENT FUNCTION NODES ---
+        g1: {
+          title: "Government function: the force paradox",
+          tags: ["Government", "Paradox", "Design"],
+          stanceTag: "Stance: clarify",
+          powerTag: "Power risk: inherent",
+          infraTag: "Infrastructure: coordination layer",
+          text:
+`The paradox you spotted:
+
+“Government shouldn’t point guns at citizens.”
+…but
+“Government should only be military.”
+
+If the only tool is force, every problem eventually looks like a security problem.
+
+So the design question is:
+What functions reduce the chance that force becomes domestic control?
+
+Common candidates (you can debate scope):
+• external defense
+• rights enforcement / courts
+• baseline infrastructure coordination
+• disaster response
+• standards that enable markets (property titles, contracts, utilities)
+
+Then add constraints:
+• decentralization where possible
+• transparency
+• due process
+• hard limits on domestic deployment`,
+          inspect:
+`This node is about tools vs constraints. It’s possible to want defense while fearing domestic coercion — but you need design safeguards.`,
+          choices: [
+            { label: "Define infrastructure precisely", hint: "What counts, and why it’s never neutral", go: "g2" },
+            { label: "Return to the olive branch", hint: "Shared goals → tools", go: "a1" },
+            { label: "Compare: legitimacy breaks in 1860", hint: "Force becomes internal", go: "cw7" }
+          ]
+        },
+
+        g2: {
+          title: "Infrastructure: the hidden policy engine",
+          tags: ["Infrastructure", "Access", "Definition"],
+          stanceTag: "Stance: expand definition",
+          powerTag: "Power risk: indirect control",
+          infraTag: "Infrastructure: roads + zoning + utilities + info",
+          text:
+`“Infrastructure” is bigger than roads.
+
+It includes:
+• highways, rail, ports
+• power/water/sewer
+• zoning and land-use rules (city-shaping)
+• housing stock patterns
+• communication networks
+• emergency capacity
+
+It’s policy made concrete.
+
+Even the U.S. interstate system had dual military logic. That doesn’t make roads evil — it means infrastructure is always strategic.`,
+          inspect:
+`When you disagree about “what government should do,” you’re often disagreeing about what counts as infrastructure.`,
+          choices: [
+            { label: "Return to the fork", hint: "Ownership and access to infrastructure nodes", go: "m2" },
+            { label: "Go to worker value channels", hint: "Wages, profits, rents, returns", go: "w1" },
+            { label: "Switch to Civil War chain", hint: "Postponement compromises", go: "cw1" }
+          ]
+        },
+
+        w1: {
+          title: "Worker value today: where it flows",
+          tags: ["Economy", "Mechanics", "Channels"],
+          stanceTag: "Stance: descriptive",
+          powerTag: "Power risk: varies by node ownership",
+          infraTag: "Infrastructure: access costs",
+          text:
+`Modern worker value flows into:
+• wages (direct pay)
+• profits (owners of companies/assets)
+• rents (access to land/housing/infrastructure/platforms)
+• financial returns (shareholders/funds)
+
+The key shift from slavery is not “capture ends.”
+It becomes mediated through system ownership rather than ownership of people.`,
+          inspect:
+`This is the “mechanics” node: it explains why housing and healthcare feel like wage issues.`,
+          choices: [
+            { label: "Back to platform concentration", hint: "Bottlenecks and nodes", go: "m3" },
+            { label: "Back to the olive branch framing", hint: "Avoid loaded words", go: "a1" },
+            { label: "Compare: 1850 patch dynamics", hint: "Temporary fixes", go: "cw5" }
+          ]
+        },
+
+        // --- CIVIL WAR COLUMN (kept shorter here; expand freely) ---
+        cw1: {
+          title: "1787: Constitutional compromise (slavery deferred)",
+          tags: ["Civil War", "Background", "Patch"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: rising",
+          infraTag: "Infrastructure: union framework",
+          text:
+`A founding compromise defers resolution.
+
+Deferral is not neutral — it’s a choice to postpone conflict into the future.`,
+          inspect:
+`This is the “deferred payment” node: the bill comes due later.`,
+          choices: [
+            { label: "1820: Missouri Compromise", hint: "Balance logic emerges", go: "cw4" },
+            { label: "Jump to 1850 patch", hint: "Temporary fix under pressure", go: "cw5" },
+            { label: "Open modern analogy", hint: "Patch vs restructure repeats", go: "m4" }
+          ]
+        },
+
+        cw3: {
+          title: "Analogy portal: postponement strategies",
+          tags: ["Civil War", "Analogy", "Pattern"],
+          stanceTag: "Stance: pattern-match",
+          powerTag: "Power risk: depends",
+          infraTag: "Infrastructure: legitimacy",
+          text:
+`You’re viewing the shared pattern:
+
+When a structural conflict is postponed, systems often adopt “balance logic” and patchwork.
+
+Sometimes that buys time for reform.
+Sometimes it stores energy for a later rupture.`,
+          inspect:
+`This node exists to connect the two columns without claiming they’re identical.`,
+          choices: [
+            { label: "Back to modern capital mobility", hint: "Continue the modern chain", go: "m1" },
+            { label: "Go to Missouri Compromise", hint: "Balance logic historically", go: "cw4" },
+            { label: "Go to 2020 trust strain", hint: "Legitimacy stress test", go: "m6" }
+          ]
+        },
+
+        cw4: {
+          title: "1820: Missouri Compromise (balance logic)",
+          tags: ["Civil War", "Patch", "Balance"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: rising",
+          infraTag: "Infrastructure: sectional balance",
+          text:
+`Balance-by-admission becomes a tool: keep equilibrium, postpone resolution.
+
+It looks pragmatic. It is also fragile.`,
+          inspect:
+`Balance logic can work only while both sides accept the scoreboard.`,
+          choices: [
+            { label: "1850: Compromise", hint: "Patch under higher pressure", go: "cw5" },
+            { label: "Compare to modern platform nodes", hint: "Bottlenecks create leverage", go: "m3" },
+            { label: "Jump to legitimacy break", hint: "1860 election", go: "cw7" }
+          ]
+        },
+
+        cw5: {
+          title: "1850: Compromise (temporary patch)",
+          tags: ["Civil War", "Patch", "Pressure"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: high",
+          infraTag: "Infrastructure: enforcement conflict",
+          text:
+`A patch buys time — but also raises enforcement stakes.
+
+When compromises require coercion to maintain, legitimacy erodes.`,
+          inspect:
+`Enforcement is where political theory meets the gun you were debating.`,
+          choices: [
+            { label: "1854: Kansas–Nebraska", hint: "Violence emerges", go: "cw6" },
+            { label: "Compare to partial policy responses", hint: "Patch vs restructure", go: "m4" },
+            { label: "Back to government paradox", hint: "Force inward risk", go: "g1" }
+          ]
+        },
+
+        cw6: {
+          title: "Escalation: institutional credibility cracks",
+          tags: ["Civil War", "Crisis", "Legitimacy"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: very high",
+          infraTag: "Infrastructure: courts + enforcement",
+          text:
+`As violence and institutional decisions accumulate, credibility weakens.
+
+Once institutions lose authority, politics becomes existential.`,
+          inspect:
+`This parallels modern “trust strain” without claiming equivalence.`,
+          choices: [
+            { label: "1860: election legitimacy break", hint: "Secession logic begins", go: "cw7" },
+            { label: "Compare to 2020 trust strain", hint: "Stress test dynamics", go: "m6" },
+            { label: "Back to 15-minute city narrative", hint: "How trust changes interpretation", go: "a3" }
+          ]
+        },
+
+        cw7: {
+          title: "1860: legitimacy breaks → secession → war",
+          tags: ["Civil War", "Rupture", "Force"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: extreme",
+          infraTag: "Infrastructure: nation-scale coercion",
+          text:
+`When legitimacy breaks, force becomes internal.
+
+This is the nightmare version of the “only military” model:
+the tool turns inward.`,
+          inspect:
+`This is the paradox you highlighted, made historical.`,
+          choices: [
+            { label: "1865: 13th Amendment", hint: "Structural prohibition of ownership", go: "cw8" },
+            { label: "Return to modern structural settlement", hint: "Avoid rupture via redesign", go: "m9" },
+            { label: "Return to olive branch framing", hint: "Design constraints explicitly", go: "a1" }
+          ]
+        },
+
+        cw8: {
+          title: "1865: 13th Amendment (human ownership prohibited)",
+          tags: ["Civil War", "Outcome", "Structural"],
+          stanceTag: "Stance: historical",
+          powerTag: "Power risk: shifts",
+          infraTag: "Infrastructure: labor becomes contract",
+          text:
+`A structural line is drawn: humans cannot be owned.
+
+But the economic system still must allocate:
+• access
+• bargaining power
+• security
+…through the ownership of systems and the rules around them.`,
+          inspect:
+`This is where your comparison starts: “interface changed; extraction logic can re-encode.”`,
+          choices: [
+            { label: "Back to worker value channels", hint: "Wages, rents, returns", go: "w1" },
+            { label: "Back to 20th c. baseline", hint: "Modern system begins", go: "m0" },
+            { label: "Return to the fork", hint: "Broaden ownership vs patch", go: "m2" }
+          ]
+        }
+      },
+
+      // Map layout (SVG positions)
+      layout: {
+        // Modern column x ~ 620; Civil War column x ~ 140; Argument/government nodes central-ish
+        positions: {
+          m0:[610,40], m1:[610,105], m2:[610,170], m3:[610,235], m4:[610,300], m5:[610,365], m6:[610,430], m7:[610,495], m8A:[610,560], m8B:[610,625], m9:[610,690],
+          a1:[375,120], a3:[375,200],
+          g1:[375,280], g2:[375,360],
+          w1:[375,440],
+          cw1:[140,40], cw3:[140,105], cw4:[140,170], cw5:[140,235], cw6:[140,300], cw7:[140,365], cw8:[140,430]
+        },
+
+        edges: [
+          // Modern spine
+          ["m0","m1","main"], ["m1","m3","main"], ["m3","m4","main"], ["m4","m5","main"], ["m5","m6","main"], ["m6","m7","main"], ["m7","m9","alt"], // settlement as a reachable alt from fragmentation
+          ["m1","m2","main"], ["m2","m8A","alt"], ["m2","m4","main"], ["m7","m8B","alt"], ["m8A","m9","main"], ["m8B","m7","main"],
+
+          // Argument / govt / infra
+          ["m4","a1","alt"], ["m5","a3","alt"], ["m4","m6","main"],
+          ["a1","g1","main"], ["a1","g2","main"], ["a1","a3","alt"],
+          ["g2","m2","main"], ["g2","w1","main"], ["w1","m3","main"], ["w1","a1","alt"],
+
+          // Civil War spine
+          ["cw1","cw4","main"], ["cw4","cw5","main"], ["cw5","cw6","main"], ["cw6","cw7","main"], ["cw7","cw8","main"],
+          ["cw1","cw5","alt"], ["cw4","cw7","alt"],
+
+          // Analogy links
+          ["cw4","m3","analogy"], ["cw5","m4","analogy"], ["cw6","m6","analogy"], ["cw7","m7","analogy"], ["cw8","m9","analogy"], ["m1","cw3","analogy"], ["cw3","m1","analogy"],
+
+          // Cross-links
+          ["m1","cw4","analogy"], ["m6","cw6","analogy"], ["g1","cw7","analogy"], ["cw8","w1","analogy"], ["m9","cw1","analogy"]
+        ]
+      }
+    };
+
+    /***********************
+     * ENGINE
+     ***********************/
+    const els = {
+      topTitle: document.getElementById("topTitle"),
+      topSub: document.getElementById("topSub"),
+      runMeta: document.getElementById("runMeta"),
+      sceneTitle: document.getElementById("sceneTitle"),
+      sceneTags: document.getElementById("sceneTags"),
+      sceneText: document.getElementById("sceneText"),
+      choices: document.getElementById("choices"),
+      stanceTag: document.getElementById("stanceTag"),
+      powerTag: document.getElementById("powerTag"),
+      infraTag: document.getElementById("infraTag"),
+      bar: document.getElementById("bar"),
+      counter: document.getElementById("counter"),
+
+      flowSvg: document.getElementById("flowSvg"),
+      edges: document.getElementById("edges"),
+      nodes: document.getElementById("nodes"),
+      inspector: document.getElementById("inspector"),
+      inspectorMini: document.getElementById("inspectorMini"),
+
+      logArea: document.getElementById("logArea"),
+      logList: document.getElementById("logList"),
+
+      btnRestart: document.getElementById("btnRestart"),
+      btnSave: document.getElementById("btnSave"),
+      btnLoad: document.getElementById("btnLoad"),
+      btnToggleAlt: document.getElementById("btnToggleAlt"),
+      btnToggleAnalogy: document.getElementById("btnToggleAnalogy"),
+      btnFocusStory: document.getElementById("btnFocusStory"),
+      btnShowLog: document.getElementById("btnShowLog"),
+      btnClearLog: document.getElementById("btnClearLog")
+    };
+
+    const state = {
+      run: 1,
+      current: "m0",
+      visited: new Set(),
+      chosenEdges: new Set(), // "from->to"
+      showAlt: true,
+      showAnalogy: true,
+      log: [],
+      flags: {}
+    };
+
+    function setTitle(){
+      els.topTitle.textContent = WORLD.meta.title;
+      els.topSub.textContent = WORLD.meta.subtitle;
+    }
+
+    function tagClassFrom(tag){
+      const t = tag.toLowerCase();
+      if(["fork","outcome","settlement","broaden","bridge","synthesis"].some(x=>t.includes(x))) return "good";
+      if(["warning","pressure","patch","trust","stress"].some(x=>t.includes(x))) return "warn";
+      if(["rupture","force","fragment"].some(x=>t.includes(x))) return "bad";
+      return "";
+    }
+
+    function pushLog(kind, msg){
+      const time = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      state.log.unshift({ time, kind, msg });
+      if(state.log.length > 60) state.log.pop();
+      renderLog();
+    }
+
+    function renderLog(){
+      if(els.logArea.style.display === "none") return;
+      els.logList.innerHTML = "";
+      for(const e of state.log){
+        const div = document.createElement("div");
+        div.className = "logEntry";
+        div.innerHTML = `<div class="k">${escapeHtml(e.time)} • ${escapeHtml(e.kind)}</div>
+                         <div class="v">${escapeHtml(e.msg)}</div>`;
+        els.logList.appendChild(div);
+      }
+      if(state.log.length === 0){
+        els.logList.innerHTML = `<div class="logEntry"><div class="v" style="color:var(--muted)">No log entries yet. Make a choice.</div></div>`;
+      }
+    }
+
+    function escapeHtml(s){
+      return (s ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function nodeAvailable(id){
+      // Node is available if it's current, or if visited, or if reachable from visited via any edge.
+      if(id === state.current) return true;
+      if(state.visited.has(id)) return true;
+      // reachable from current or any visited node:
+      for(const [a,b,kind] of WORLD.layout.edges){
+        if(a === state.current && b === id) return true;
+        if(state.visited.has(a) && b === id) return true;
+      }
+      return false;
+    }
+
+    function goto(id, via=null){
+      const prev = state.current;
+      state.current = id;
+      state.visited.add(id);
+
+      if(via){
+        state.chosenEdges.add(`${via}->${id}`);
+      } else {
+        // if direct edge exists from prev to id, mark chosen
+        if(prev && prev !== id) state.chosenEdges.add(`${prev}->${id}`);
+      }
+
+      const n = WORLD.nodes[id];
+      pushLog("MOVE", `${prev} → ${id}: ${n.title}`);
+      renderStory();
+      renderMap();
+      updateProgress();
+    }
+
+    function applyEffect(effect){
+      if(!effect) return;
+      if(effect.visited){
+        for(const v of effect.visited) state.visited.add(v);
+      }
+      if(effect.flags){
+        Object.assign(state.flags, effect.flags);
+      }
+    }
+
+    function renderStory(){
+      const n = WORLD.nodes[state.current];
+      els.sceneTitle.textContent = n.title;
+
+      // tags
+      els.sceneTags.innerHTML = "";
+      for(const t of (n.tags || [])){
+        const span = document.createElement("span");
+        const klass = tagClassFrom(t);
+        span.className = `tag ${klass}`.trim();
+        span.textContent = t;
+        els.sceneTags.appendChild(span);
+      }
+
+      els.sceneText.textContent = n.text || "";
+
+      els.stanceTag.textContent = n.stanceTag || "Stance: —";
+      els.powerTag.textContent  = n.powerTag  || "Power risk: —";
+      els.infraTag.textContent  = n.infraTag  || "Infrastructure: —";
+
+      // choices
+      els.choices.innerHTML = "";
+      const choices = n.choices || [];
+      choices.forEach((c, i)=>{
+        const btn = document.createElement("button");
+        btn.className = "choice";
+        btn.innerHTML = `<strong>${i+1}.</strong> ${escapeHtml(c.label)}<small>${escapeHtml(c.hint || "")}</small>`;
+        btn.addEventListener("click", ()=>{
+          applyEffect(c.effect);
+          goto(c.go, state.current);
+        });
+        els.choices.appendChild(btn);
+      });
+
+      els.runMeta.textContent = `Run: ${String(state.run).padStart(2,"0")} • Mode: Explore`;
+    }
+
+    function renderMap(){
+      // Build nodes & edges once per render (simple + robust)
+      els.edges.innerHTML = "";
+      els.nodes.innerHTML = "";
+
+      // edges
+      for(const [a,b,kind] of WORLD.layout.edges){
+        if(kind === "alt" && !state.showAlt) continue;
+        if(kind === "analogy" && !state.showAnalogy) continue;
+
+        const pa = WORLD.layout.positions[a];
+        const pb = WORLD.layout.positions[b];
+        if(!pa || !pb) continue;
+
+        const x1 = pa[0], y1 = pa[1];
+        const x2 = pb[0], y2 = pb[1];
+
+        const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+        line.setAttribute("x1", x1+110);
+        line.setAttribute("y1", y1+22);
+        line.setAttribute("x2", x2+110);
+        line.setAttribute("y2", y2+22);
+        line.setAttribute("class", edgeClass(a,b,kind));
+        line.dataset.from = a;
+        line.dataset.to = b;
+        els.edges.appendChild(line);
+      }
+
+      // nodes
+      for(const [id, pos] of Object.entries(WORLD.layout.positions)){
+        const n = WORLD.nodes[id];
+        if(!n) continue;
+
+        const [x,y] = pos;
+        const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+        g.setAttribute("transform", `translate(${x},${y})`);
+        g.setAttribute("class", `node ${isDecisionNode(id) ? "decision": ""} ${id === state.current ? "active": ""} ${nodeAvailable(id) ? "" : "locked"}`.trim());
+        g.dataset.id = id;
+
+        if(isDecisionNode(id)){
+          const poly = document.createElementNS("http://www.w3.org/2000/svg","polygon");
+          poly.setAttribute("points", "110,0 220,22 110,44 0,22");
+          g.appendChild(poly);
+        } else {
+          const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+          rect.setAttribute("width","220");
+          rect.setAttribute("height","44");
+          rect.setAttribute("rx","10");
+          g.appendChild(rect);
+        }
+
+        const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+        text.setAttribute("x","110");
+        text.setAttribute("y","26");
+        text.setAttribute("text-anchor","middle");
+        text.textContent = shorten(n.title, 28);
+        g.appendChild(text);
+
+        g.addEventListener("click", ()=>{
+          if(!nodeAvailable(id)) return;
+          showInspector(id);
+          goto(id);
+        });
+
+        g.addEventListener("mouseenter", ()=> showInspector(id, true));
+        els.nodes.appendChild(g);
+      }
+    }
+
+    function edgeClass(a,b,kind){
+      const key = `${a}->${b}`;
+      const chosen = state.chosenEdges.has(key);
+      const active = (a === state.current || b === state.current);
+
+      let cls = "edge";
+      if(kind === "alt") cls += " alt";
+      if(kind === "analogy") cls += " analogy";
+      if(active) cls += " active";
+      if(chosen) cls += " chosen";
+      return cls;
+    }
+
+    function isDecisionNode(id){
+      // crude but useful: nodes with "Decision" or "Fork" in tags OR id ends with "2" often not reliable; use tags
+      const n = WORLD.nodes[id];
+      return (n?.tags || []).some(t => t.toLowerCase().includes("fork"));
+    }
+
+    function shorten(s, max){
+      s = s || "";
+      return s.length > max ? s.slice(0, max-1) + "…" : s;
+    }
+
+    function showInspector(id, hover=false){
+      const n = WORLD.nodes[id];
+      if(!n) return;
+      const avail = nodeAvailable(id);
+      const title = hover ? "Inspector (hover)" : "Inspector";
+      els.inspector.innerHTML = `
+        <h3>${escapeHtml(title)}</h3>
+        <p><strong>${escapeHtml(id)}</strong> — ${escapeHtml(n.title)}</p>
+        <div class="mini" id="inspectorMini"></div>
+      `;
+      const mini = document.getElementById("inspectorMini");
+      mini.innerHTML =
+        `<div style="margin-top:8px; color: var(--muted);">
+          ${escapeHtml(n.inspect || "No extra context yet.")}
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="tag ${avail ? "good": "warn"}">${avail ? "available" : "locked"}</span>
+          <span class="tag">${state.visited.has(id) ? "visited" : "new"}</span>
+          <span class="tag">${(n.tags || []).slice(0,2).join(" • ") || "—"}</span>
+        </div>`;
+    }
+
+    function updateProgress(){
+      const total = Object.keys(WORLD.nodes).length;
+      const visitedCount = state.visited.size;
+      els.counter.textContent = `${visitedCount} / ${total} nodes visited`;
+      const pct = total ? (visitedCount / total) * 100 : 0;
+      els.bar.style.width = pct.toFixed(2) + "%";
+    }
+
+    function restart(){
+      state.run += 1;
+      state.current = "m0";
+      state.visited = new Set(["m0"]);
+      state.chosenEdges = new Set();
+      state.log = [];
+      state.flags = {};
+      pushLog("SYSTEM", "Restarted run.");
+      renderStory();
+      renderMap();
+      updateProgress();
+    }
+
+    function toggleLog(force=null){
+      const open = force ?? (els.logArea.style.display === "none");
+      els.logArea.style.display = open ? "block" : "none";
+      renderLog();
+    }
+
+    function copySave(){
+      const payload = {
+        run: state.run,
+        current: state.current,
+        visited: Array.from(state.visited),
+        chosenEdges: Array.from(state.chosenEdges),
+        showAlt: state.showAlt,
+        showAnalogy: state.showAnalogy,
+        flags: state.flags
+      };
+      const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      navigator.clipboard?.writeText(code).then(()=>{
+        pushLog("SYSTEM", "Save code copied to clipboard.");
+      }).catch(()=>{
+        prompt("Copy this save code:", code);
+      });
+    }
+
+    function loadSave(){
+      const code = prompt("Paste save code:");
+      if(!code) return;
+      try{
+        const json = decodeURIComponent(escape(atob(code.trim())));
+        const payload = JSON.parse(json);
+
+        state.run = payload.run ?? state.run;
+        state.current = payload.current ?? "m0";
+        state.visited = new Set(payload.visited ?? ["m0"]);
+        state.chosenEdges = new Set(payload.chosenEdges ?? []);
+        state.showAlt = !!payload.showAlt;
+        state.showAnalogy = !!payload.showAnalogy;
+        state.flags = payload.flags ?? {};
+
+        pushLog("SYSTEM", "Save loaded.");
+        renderStory();
+        renderMap();
+        updateProgress();
+      } catch (e){
+        alert("That save code didn’t parse.");
+      }
+    }
+
+    function wireUI(){
+      els.btnRestart.addEventListener("click", restart);
+      els.btnSave.addEventListener("click", copySave);
+      els.btnLoad.addEventListener("click", loadSave);
+
+      els.btnToggleAlt.addEventListener("click", ()=>{
+        state.showAlt = !state.showAlt;
+        pushLog("TOGGLE", `Alternatives: ${state.showAlt ? "ON" : "OFF"}`);
+        renderMap();
+      });
+
+      els.btnToggleAnalogy.addEventListener("click", ()=>{
+        state.showAnalogy = !state.showAnalogy;
+        pushLog("TOGGLE", `Analogy links: ${state.showAnalogy ? "ON" : "OFF"}`);
+        renderMap();
+      });
+
+      els.btnFocusStory.addEventListener("click", ()=>{
+        showInspector(state.current);
+        pushLog("SYSTEM", "Focused current node in inspector.");
+      });
+
+      els.btnShowLog.addEventListener("click", ()=> toggleLog(true));
+      els.btnClearLog.addEventListener("click", ()=>{
+        state.log = [];
+        renderLog();
+      });
+
+      // Keyboard: 1/2/3 pick choice; M toggles map focus inspector; L toggles log; Esc closes log
+      window.addEventListener("keydown", (e)=>{
+        if(e.key === "Escape"){
+          toggleLog(false);
+          return;
+        }
+        const k = e.key.toLowerCase();
+        if(["1","2","3","4","5","6","7","8","9"].includes(e.key)){
+          const idx = parseInt(e.key,10) - 1;
+          const n = WORLD.nodes[state.current];
+          const c = (n.choices || [])[idx];
+          if(c){
+            applyEffect(c.effect);
+            goto(c.go, state.current);
+          }
+          return;
+        }
+        if(k === "m"){
+          showInspector(state.current);
+          return;
+        }
+        if(k === "l"){
+          const open = els.logArea.style.display === "none";
+          toggleLog(open);
+          return;
+        }
+      });
+    }
+
+    function init(){
+      setTitle();
+      // ensure initial
+      state.visited.add("m0");
+      pushLog("SYSTEM", "Booted. Start at 20th century baseline.");
+      renderStory();
+      renderMap();
+      updateProgress();
+      wireUI();
+      showInspector("m0");
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<body>
+<script>
+(async () => {
+  // Wait for Jellyfin login page to load
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  await wait(800);
+
+  document.querySelector('input[name="username"]').value = "guest";
+  document.querySelector('input[type="password"]').value = "guest";
+
+  await wait(200);
+  document.querySelector('button[type="submit"]').click();
+})();
+</script>
+
+<iframe
+  src="https://jellyfin.system42.one/web/#/login?url=%2Fdetails%3Fid%3D627b1a53e17fb421ae94afaad0a3a7b3%26serverId%3D83f1676236ba4118b8d55abf93a23237"
+  style="width:100vw;height:100vh;border:none">
+</iframe>
+</body>
+</html>

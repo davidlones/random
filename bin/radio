@@ -1,0 +1,483 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_get() {
+  python3 - "$1" <<'PY'
+import sys
+sys.path.insert(0, "/home/david/random/bin")
+from radio_config import load_radio_config, expand_path
+
+path = sys.argv[1].split(".")
+value = load_radio_config()
+for part in path:
+    value = value[part]
+if isinstance(value, bool):
+    print("true" if value else "false")
+elif isinstance(value, (int, float)):
+    print(value)
+else:
+    print(expand_path(value))
+PY
+}
+
+BASE_DIR="$(config_get paths.state_dir)"
+PID_FILE="${BASE_DIR}/gqrx.pid"
+XVFB_PID_FILE="${BASE_DIR}/xvfb.pid"
+LOG_FILE="${BASE_DIR}/gqrx.log"
+CONF_FILE="$(config_get paths.gqrx_config)"
+MONITOR_SCRIPT="${HOME}/random/bin/radio_monitor.py"
+RDS_SCRIPT="${HOME}/random/bin/radio_rds.py"
+TRANSCRIBE_SCRIPT="${HOME}/random/bin/radio_transcribe.py"
+ARCHIVE_SCRIPT="${HOME}/random/bin/radio_archive.py"
+MULTICHANNEL_SCRIPT="${HOME}/random/bin/radio_multichannel.py"
+SESSION_SCRIPT="${HOME}/random/bin/radio_session.py"
+CORTEX_SCRIPT="${HOME}/random/bin/radio_cortex.py"
+DISPLAY_NUM="$(config_get paths.xvfb_display)"
+REMOTE_HOST="$(config_get paths.remote_host)"
+REMOTE_PORT="$(config_get paths.remote_port)"
+DEFAULT_START_FREQ="$(config_get radio.default_frequency_mhz)"
+DEFAULT_START_BAND="$(config_get radio.default_band)"
+
+mkdir -p "${BASE_DIR}"
+
+is_running() {
+  if [[ -f "${PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${PID_FILE}")"
+    if kill -0 "${pid}" 2>/dev/null; then
+      return 0
+    fi
+    rm -f "${PID_FILE}"
+  fi
+  return 1
+}
+
+is_xvfb_running() {
+  if [[ -f "${XVFB_PID_FILE}" ]]; then
+    local pid
+    pid="$(cat "${XVFB_PID_FILE}")"
+    if kill -0 "${pid}" 2>/dev/null; then
+      return 0
+    fi
+    rm -f "${XVFB_PID_FILE}"
+  fi
+  return 1
+}
+
+set_freq() {
+  local freq_mhz="${1:?frequency required}"
+  local freq_hz
+  freq_hz="$(awk "BEGIN { printf \"%.0f\", ${freq_mhz} * 1000000 }")"
+  sed -i "s/^frequency=.*/frequency=${freq_hz}/" "${CONF_FILE}"
+}
+
+set_band_preset() {
+  local band="${1:-fm}"
+  local demod low high offset mode passband
+
+  case "${band}" in
+    fm|broadcast-fm)
+      demod="WFM (mono)"
+      low="-100000"
+      high="100000"
+      offset="-504000"
+      mode="WFM"
+      passband=""
+      ;;
+    nfm|vhf|uhf|scanner|ham-fm|2m|70cm|gmrs|frs|murs|weather|wx)
+      demod="Narrow FM"
+      low="-6000"
+      high="6000"
+      offset="0"
+      mode="FM"
+      passband="12000"
+      ;;
+    air|airband)
+      demod="AM"
+      low="-5000"
+      high="5000"
+      offset="0"
+      mode="AM"
+      passband="10000"
+      ;;
+    am|broadcast-am|mw|sw-am)
+      demod="AM"
+      low="-4500"
+      high="4500"
+      offset="0"
+      mode="AM"
+      passband="9000"
+      ;;
+    ams|am-sync)
+      demod="AM-Sync"
+      low="-4500"
+      high="4500"
+      offset="0"
+      mode="AMS"
+      passband="9000"
+      ;;
+    usb|hf-usb|10m-usb|20m|17m|15m)
+      demod="USB"
+      low="300"
+      high="2800"
+      offset="0"
+      mode="USB"
+      passband="2500"
+      ;;
+    lsb|hf-lsb|40m|80m|160m)
+      demod="LSB"
+      low="-2800"
+      high="-300"
+      offset="0"
+      mode="LSB"
+      passband="2500"
+      ;;
+    cw|cwu)
+      demod="CW-U"
+      low="500"
+      high="500"
+      offset="0"
+      mode="CWU"
+      passband="500"
+      ;;
+    cwl)
+      demod="CW-L"
+      low="-500"
+      high="-500"
+      offset="0"
+      mode="CWL"
+      passband="500"
+      ;;
+    cb|11m)
+      demod="AM"
+      low="-5000"
+      high="5000"
+      offset="0"
+      mode="AM"
+      passband="10000"
+      ;;
+    *)
+      echo "unknown band preset: ${band}" >&2
+      return 1
+      ;;
+  esac
+
+  sed -i "s/^demod=.*/demod=${demod}/" "${CONF_FILE}"
+  sed -i "s/^filter_low_cut=.*/filter_low_cut=${low}/" "${CONF_FILE}"
+  sed -i "s/^filter_high_cut=.*/filter_high_cut=${high}/" "${CONF_FILE}"
+  sed -i "s/^offset=.*/offset=${offset}/" "${CONF_FILE}"
+
+  RADIO_REMOTE_MODE="${mode}"
+  RADIO_REMOTE_PASSBAND="${passband}"
+  RADIO_BAND_PRESET="${band}"
+}
+
+clear_crash_flag() {
+  sed -i 's/^crashed=.*/crashed=false/' "${CONF_FILE}"
+}
+
+send_remote() {
+  local command="${1:?command required}"
+  exec 3<>"/dev/tcp/${REMOTE_HOST}/${REMOTE_PORT}" || return 1
+  printf '%s\n' "${command}" >&3
+  local reply
+  IFS= read -r reply <&3 || return 1
+  exec 3<&-
+  exec 3>&-
+  printf '%s\n' "${reply}"
+}
+
+wait_for_remote() {
+  local tries=30
+  while (( tries > 0 )); do
+    if send_remote "_" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    tries=$((tries - 1))
+  done
+  return 1
+}
+
+ensure_xvfb() {
+  if is_xvfb_running; then
+    return 0
+  fi
+  : > "${BASE_DIR}/xvfb.log"
+  setsid Xvfb "${DISPLAY_NUM}" -screen 0 1280x720x24 -nolisten tcp </dev/null >>"${BASE_DIR}/xvfb.log" 2>&1 &
+  echo "$!" > "${XVFB_PID_FILE}"
+  sleep 1
+}
+
+reserve_primary_session() {
+  "${SESSION_SCRIPT}" reserve-primary \
+    --backend "$1" \
+    --owner "$2" \
+    --pid "$$" \
+    --detail "config=${CONF_FILE}" \
+    --detail "display=${DISPLAY_NUM}" \
+    --detail "remote_host=${REMOTE_HOST}" \
+    --detail "remote_port=${REMOTE_PORT}"
+}
+
+start_radio() {
+  local freq="${1:-${DEFAULT_START_FREQ}}"
+  local band="${2:-${DEFAULT_START_BAND}}"
+  local session_token
+  if is_running; then
+    echo "radio already running (pid $(cat "${PID_FILE}"))"
+    exit 1
+  fi
+  session_token="$(reserve_primary_session gqrx main)"
+
+  set_freq "${freq}"
+  set_band_preset "${band}"
+  clear_crash_flag
+  : > "${LOG_FILE}"
+  ensure_xvfb
+  DISPLAY="${DISPLAY_NUM}" setsid gqrx -c "${CONF_FILE}" </dev/null >>"${LOG_FILE}" 2>&1 &
+  local pid=$!
+  echo "${pid}" > "${PID_FILE}"
+  sleep 2
+
+  if kill -0 "${pid}" 2>/dev/null; then
+    if ! wait_for_remote; then
+      "${SESSION_SCRIPT}" release --token "${session_token}" >/dev/null 2>&1 || true
+      echo "gqrx started but remote control did not come up; recent log:"
+      tail -n 60 "${LOG_FILE}" || true
+      exit 1
+    fi
+    send_remote "F $(awk "BEGIN { printf \"%.0f\", ${freq} * 1000000 }")" >/dev/null || true
+    if [[ -n "${RADIO_REMOTE_PASSBAND}" ]]; then
+      send_remote "M ${RADIO_REMOTE_MODE} ${RADIO_REMOTE_PASSBAND}" >/dev/null || true
+    else
+      send_remote "M ${RADIO_REMOTE_MODE}" >/dev/null || true
+    fi
+    if [[ "${RADIO_BAND_PRESET}" == "fm" || "${RADIO_BAND_PRESET}" == "broadcast-fm" ]]; then
+      send_remote "U RDS 1" >/dev/null || true
+    fi
+    send_remote "U DSP 1" >/dev/null || true
+    "${SESSION_SCRIPT}" activate-primary \
+      --token "${session_token}" \
+      --pid "${pid}" \
+      --detail "frequency_mhz=${freq}" \
+      --detail "band=${RADIO_BAND_PRESET}" >/dev/null
+    echo "headless gqrx started on ${freq} MHz (${RADIO_BAND_PRESET}, pid ${pid})"
+    echo "dsp: $(send_remote "u DSP" 2>/dev/null || printf 'unknown')"
+    echo "config: ${CONF_FILE}"
+  else
+    "${SESSION_SCRIPT}" release --token "${session_token}" >/dev/null 2>&1 || true
+    echo "gqrx failed to start; recent log:"
+    tail -n 40 "${LOG_FILE}" || true
+    rm -f "${PID_FILE}"
+    exit 1
+  fi
+}
+
+stop_radio() {
+  if ! is_running; then
+    echo "radio is not running"
+    exit 1
+  fi
+  local pid
+  pid="$(cat "${PID_FILE}")"
+  kill "${pid}"
+  "${SESSION_SCRIPT}" release --pid "${pid}" >/dev/null 2>&1 || true
+  rm -f "${PID_FILE}"
+  if is_xvfb_running; then
+    kill "$(cat "${XVFB_PID_FILE}")" 2>/dev/null || true
+    rm -f "${XVFB_PID_FILE}"
+  fi
+  echo "radio stopped"
+}
+
+status_radio() {
+  if is_running; then
+    echo "radio running (pid $(cat "${PID_FILE}"))"
+    if is_xvfb_running; then
+      echo "xvfb running (pid $(cat "${XVFB_PID_FILE}"), display ${DISPLAY_NUM})"
+    fi
+    echo "config: ${CONF_FILE}"
+    echo "mode: $(send_remote 'm' 2>/dev/null || printf 'unknown')"
+    echo "freq: $(send_remote 'f' 2>/dev/null || printf 'unknown')"
+    echo "session: $("${SESSION_SCRIPT}" status | head -n 1)"
+  else
+    echo "radio is not running"
+    echo "session: $("${SESSION_SCRIPT}" status | head -n 1)"
+  fi
+}
+
+tune_radio() {
+  local freq="${1:?frequency required}"
+  local band="${2:-fm}"
+  if is_running; then
+    stop_radio
+  fi
+  start_radio "${freq}" "${band}"
+}
+
+list_bands() {
+  cat <<'EOF'
+Available band presets:
+  fm            Broadcast FM / wide FM broadcast audio
+  nfm           Narrow FM for VHF/UHF voice and general scanner use
+  weather       NOAA weather radio (same DSP as nfm)
+  air           AM airband
+  am            Broadcast AM / shortwave AM
+  ams           AM synchronous detection
+  usb           Upper sideband
+  lsb           Lower sideband
+  cw            CW upper
+  cwl           CW lower
+  cb            CB / 11m AM
+  2m            2 meter ham FM
+  70cm          70 centimeter ham FM
+EOF
+}
+
+monitor_radio() {
+  if ! is_running; then
+    echo "radio is not running"
+    exit 1
+  fi
+  "${MONITOR_SCRIPT}" "$@"
+}
+
+rds_radio() {
+  local freq="${1:-103.7}"
+  shift || true
+  if is_running; then
+    stop_radio
+  fi
+  "${RDS_SCRIPT}" --frequency "${freq}" "$@"
+}
+
+transcribe_radio() {
+  if ! is_running; then
+    echo "radio is not running"
+    exit 1
+  fi
+  "${TRANSCRIBE_SCRIPT}" "$@"
+}
+
+archive_radio() {
+  "${ARCHIVE_SCRIPT}" "$@"
+}
+
+multichannel_radio() {
+  "${MULTICHANNEL_SCRIPT}" "$@"
+}
+
+session_radio() {
+  "${SESSION_SCRIPT}" status "$@"
+}
+
+cortex_radio() {
+  "${CORTEX_SCRIPT}" "$@"
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  radio start [frequency_mhz] [band]
+  radio tune <frequency_mhz> [band]
+  radio bands
+  radio monitor
+  radio monitor --all-local --transcribe
+  radio monitor --transcribe [--transcribe-backend auto|vosk|openai|nemo]
+  radio archive start <name> [--cache-hours N] [--permanent] [--transcribe]
+  radio archive status [name]
+  radio archive stop <name>
+  radio archive log <name> [--lines N]
+  radio multichannel start <name> --center <mhz> --channel name:freq[:mode[:play]]
+  radio multichannel status [name]
+  radio multichannel stop <name>
+  radio multichannel log <name> [--lines N]
+  radio cortex start|status|stop|log [--config path] [--all-local]
+  radio session [--json]
+  radio rds [frequency_mhz] [--seconds N] [--once]
+  radio transcribe [--backend auto|vosk|openai|nemo] [--partials] [--lang en-us] [--all-local]
+  radio stop
+  radio status
+  radio log
+
+Examples:
+  radio start 103.7
+  radio start 121.5 air
+  radio start 162.55 weather
+  radio start 27.185 cb
+  radio tune 14.25 usb
+  radio monitor
+  radio monitor --all-local --transcribe
+  radio monitor --transcribe --transcribe-backend openai
+  radio monitor --transcribe --transcribe-backend nemo --transcribe-model nvidia/parakeet-tdt-0.6b-v2
+  radio archive start wx --cache-hours 6 --transcribe --transcribe-backend openai
+  radio archive start scanner-a --source alsa_output.pci-0000_00_1f.3.analog-stereo.monitor --permanent
+  radio multichannel start wxband --center 162.55 --channel main:162.55:nfm:play --channel alt:162.4:nfm --transcribe
+  radio cortex start
+  radio cortex start --all-local
+  radio cortex status
+  radio session
+  radio rds 103.7 --seconds 30
+  radio transcribe --backend openai
+  radio transcribe --all-local
+  radio transcribe --backend nemo --nemo-model nvidia/parakeet-tdt-0.6b-v2
+  radio transcribe --backend vosk --partials
+EOF
+}
+
+cmd="${1:-start}"
+case "${cmd}" in
+  start)
+    shift || true
+    start_radio "${1:-103.7}" "${2:-fm}"
+    ;;
+  tune)
+    shift || true
+    tune_radio "${1:?frequency required}" "${2:-fm}"
+    ;;
+  bands)
+    list_bands
+    ;;
+  monitor)
+    shift || true
+    monitor_radio "$@"
+    ;;
+  rds)
+    shift || true
+    rds_radio "${1:-103.7}" "${@:2}"
+    ;;
+  transcribe)
+    shift || true
+    transcribe_radio "$@"
+    ;;
+  archive)
+    shift || true
+    archive_radio "$@"
+    ;;
+  multichannel)
+    shift || true
+    multichannel_radio "$@"
+    ;;
+  cortex)
+    shift || true
+    cortex_radio "$@"
+    ;;
+  session)
+    shift || true
+    session_radio "$@"
+    ;;
+  stop)
+    stop_radio
+    ;;
+  status)
+    status_radio
+    ;;
+  log)
+    tail -n 60 "${LOG_FILE}"
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

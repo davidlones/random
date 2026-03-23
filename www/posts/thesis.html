@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Thesis — Cyclical Nested Cosmology</title>
+<meta name="color-scheme" content="light dark"/>
+
+<style>
+/* =========================
+   CORE THEME
+========================= */
+:root{
+  --bg:#0b0e14;
+  --panel:#111826;
+  --text:#e8eefc;
+  --muted:#a8b3cf;
+  --line:rgba(255,255,255,.12);
+  --accent:#7cc7ff;
+  --accent2:#b58bff;
+
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  --serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f6f8ff;
+    --panel:#ffffff;
+    --text:#101627;
+    --muted:#4b5a78;
+    --line:rgba(0,0,0,.12);
+    --accent:#005eff;
+    --accent2:#6a2dff;
+  }
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+
+body{
+  margin:0;
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  overflow:hidden;
+}
+
+/* =========================
+   WINDOW-SAFE LAYOUT
+========================= */
+.app{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ---------- Header ---------- */
+header{
+  flex:0 0 auto;
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,255,255,.05), transparent);
+}
+
+.kicker{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:0 0 4px;
+}
+
+h1{
+  margin:0 0 6px;
+  font-size:18px;
+  line-height:1.2;
+}
+
+.subtitle{
+  font-size:12px;
+  color:var(--muted);
+  max-width:70ch;
+}
+
+/* ---------- Controls ---------- */
+.controls{
+  margin-top:6px;
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+button{
+  font-family:var(--mono);
+  font-size:10px;
+  padding:6px 8px;
+  border-radius:6px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+}
+button:hover{background:rgba(255,255,255,.08)}
+
+/* ---------- Main Scroll Area ---------- */
+main{
+  flex:1 1 auto;
+  overflow:auto;
+  padding:10px 12px;
+}
+
+/* =========================
+   SECTIONS (ACCORDION)
+========================= */
+section{
+  border-bottom:1px dashed var(--line);
+  padding:6px 0;
+}
+
+section:last-child{border-bottom:none}
+
+section > h2{
+  margin:0;
+  font-size:14px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+section > h2::before{
+  content:"▸";
+  font-size:12px;
+  transform:rotate(0deg);
+  transition:.15s;
+  opacity:.7;
+}
+
+section[data-open="1"] > h2::before{
+  transform:rotate(90deg);
+}
+
+.content{
+  display:none;
+  padding:6px 2px 10px;
+  font-size:13px;
+}
+
+section[data-open="1"] .content{
+  display:block;
+}
+
+/* =========================
+   TYPOGRAPHY
+========================= */
+p{margin:6px 0}
+
+ul{
+  margin:6px 0 6px 18px;
+}
+li{margin:4px 0}
+
+blockquote{
+  font-family:var(--serif);
+  border-left:3px solid var(--accent2);
+  padding:6px 10px;
+  margin:8px 0;
+  background:linear-gradient(90deg, rgba(181,139,255,.15), transparent);
+}
+
+code{
+  font-family:var(--mono);
+  font-size:12px;
+  background:rgba(0,0,0,.25);
+  padding:2px 4px;
+  border-radius:4px;
+}
+
+.equation{
+  font-family:var(--mono);
+  font-size:12px;
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:rgba(0,0,0,.2);
+  margin:6px 0;
+  white-space:pre-wrap;
+}
+
+/* =========================
+   SMALL HEIGHT SAFETY
+========================= */
+@media (max-height:520px){
+  h1{font-size:16px}
+  .subtitle{font-size:11px}
+  .content{font-size:12px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<header>
+  <div class="kicker">Working Thesis • Revamped</div>
+  <h1>Cyclical, Nested Cosmology with Persistent Gravitational Topology</h1>
+  <div class="subtitle">
+    Dark matter as gravitational memory; black holes as temporal archives; cosmic structure as inherited constraint geometry.
+  </div>
+
+  <div class="controls">
+    <button id="expand">Expand all</button>
+    <button id="collapse">Collapse all</button>
+    <button id="print-pdf">Print Thesis PDF</button>
+  </div>
+</header>
+
+<main>
+
+<section data-open="0">
+<h2>Abstract</h2>
+<div class="content">
+<p>
+We propose a speculative framework in which the universe is a <em>nested, cyclical</em> system whose large-scale structure
+is governed by <strong>persistent gravitational topology</strong> rather than continuously novel initial conditions.
+</p>
+<p>
+Topology is encoded at an early epoch, preserved and amplified by a collisionless metric component interpreted here
+as dark-matter geometry, and revealed by baryonic matter as a late-arriving tracer. Black holes are reinterpreted as
+<strong>temporal mirror inversions</strong>: surface-bound archives encoding the past worldlines of absorbed matter as horizon data.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>1. Introduction</h2>
+<div class="content">
+<p>
+Standard cosmology explains structure growth but leaves unresolved the origin of large-scale topology, the nature of dark matter,
+and the fate of information. This thesis reallocates explanatory roles rather than introducing new entities.
+</p>
+<blockquote>
+“The universe does not invent structure every morning; it unfolds it.”
+</blockquote>
+</div>
+</section>
+
+<section data-open="0">
+<h2>2. Early Encoding of Topology</h2>
+<div class="content">
+<p>
+Inflationary perturbations encode a constraint graph of peaks, filaments, saddles, and voids. This is not a blueprint
+for galaxies, but a topological skeleton limiting later evolution.
+</p>
+<div class="equation">
+Topology → Metric scaffold → Tracer dynamics → Archive saturation → Conformal recursion
+</div>
+</div>
+</section>
+
+<section data-open="0">
+<h2>3. Dark Matter as Persistent Metric Geometry</h2>
+<div class="content">
+<p>
+Dark matter is treated here not as exotic particles nor cross-universe gravity, but as long-lived curvature modes:
+<strong>gravitational memory</strong> inherited across cosmic epochs.
+</p>
+<ul>
+  <li>Explains smooth halos and filaments</li>
+  <li>Explains robustness of the cosmic web</li>
+  <li>Requires no new interactions</li>
+</ul>
+</div>
+</section>
+
+<section data-open="0">
+<h2>4. Baryons as Tracers</h2>
+<div class="content">
+<p>
+Baryonic matter is dissipative and late-arriving. It statistically settles into pre-existing attractors,
+revealing rather than creating structure.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>5. Nested Branching & Degeneracy</h2>
+<div class="content">
+<p>
+Fine-scale histories may branch into near-identical realizations. These branches do not interact; they become
+indistinguishable as entropy compresses degrees of freedom.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>6. Black Holes as Temporal Mirror Archives</h2>
+<div class="content">
+<p>
+A black hole is not a container in space but a <strong>mirror in time</strong>. The event horizon functions as an index surface
+encoding absorbed worldlines. The interior represents compressed, inverted ordering—not a forward narrative.
+</p>
+<blockquote>
+“A black hole is a surface-written archive of everything that fell into it.”
+</blockquote>
+</div>
+</section>
+
+<section data-open="0">
+<h2>7. Horizon Merging & Convergence</h2>
+<div class="content">
+<p>
+As black holes merge and expansion isolates regions, micro-historical differences collapse into equivalence classes.
+Convergence occurs through loss of distinguishability, not interaction.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>8. Conformal Inversion & Cosmic Recursion</h2>
+<div class="content">
+<p>
+The far-future horizon-dominated state becomes conformally equivalent to an inverted initial condition,
+allowing topological inheritance across cycles.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>9. Implications</h2>
+<div class="content">
+<ul>
+  <li>Dark matter as gravitational memory</li>
+  <li>Cosmic web as standing topology</li>
+  <li>Black holes as archival endpoints</li>
+  <li>Cycles as re-expression, not replay</li>
+</ul>
+</div>
+</section>
+
+<section data-open="0">
+<h2>10. Falsifiability</h2>
+<div class="content">
+<p>
+The framework fails if early-epoch topology does not statistically correlate with late-time lensing structure,
+or if large-scale coherence contradicts inheritance of curvature modes.
+</p>
+</div>
+</section>
+
+<section data-open="0">
+<h2>11. Conclusion</h2>
+<div class="content">
+<p>
+The universe is framed as a memory-bearing system: it explores difference locally, compresses it globally,
+and re-expresses inherited constraints across cycles.
+</p>
+</div>
+</section>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll("section");
+
+function expandAll(){
+  sections.forEach(s=>s.dataset.open="1");
+}
+function collapseAll(){
+  sections.forEach(s=>s.dataset.open="0");
+}
+
+sections.forEach(s=>{
+  const h = s.querySelector("h2");
+  h.addEventListener("click", ()=>{
+    s.dataset.open = s.dataset.open==="1" ? "0" : "1";
+  });
+});
+
+document.getElementById("expand").onclick = expandAll;
+document.getElementById("collapse").onclick = collapseAll;
+
+document.getElementById("print-pdf").addEventListener("click", ()=>{
+  const sourceTexUrl = "https://raw.githubusercontent.com/davidlones/public/main/thesis/draft.tex";
+  const compiledPdfUrl = `https://latexonline.cc/compile?url=${encodeURIComponent(sourceTexUrl)}`;
+  window.open(compiledPdfUrl, "_blank", "noopener");
+});
+
+// Start collapsed for windowed contexts
+collapseAll();
+</script>
+
+</body>
+</html>

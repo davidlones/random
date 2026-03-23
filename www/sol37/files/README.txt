@@ -1,0 +1,1 @@
+Drop any assets here and open them from the terminal, e.g., `open ./files/your-image.png`.

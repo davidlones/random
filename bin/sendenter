@@ -1,0 +1,4 @@
+#!/bin/bash
+wmctrl -a $1
+shift
+xdotool key KP_Enter

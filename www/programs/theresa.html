@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SORRENTO-2007 Pseudo-Blockchain Contract Ledger</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 18px; font: 14px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    h1,h2 { margin: 0 0 10px 0; font-weight: 700; }
+    .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width: 980px){ .grid { grid-template-columns: 420px 1fr; } }
+    .panel { border: 1px solid #2a2a2a; border-radius: 10px; padding: 12px; background: #0f0f10; }
+    label { display:block; margin: 8px 0 4px; color:#bdbdbd; }
+    input, textarea, button, select {
+      width: 100%; box-sizing: border-box;
+      background:#111; color:#eaeaea;
+      border:1px solid #2a2a2a; border-radius:8px;
+      padding: 10px;
+      font: inherit;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { display:flex; gap:10px; }
+    .row > * { flex:1; }
+    button { cursor:pointer; }
+    button.primary { background:#1a1a1a; border-color:#3a3a3a; }
+    button.danger { background:#2a1212; border-color:#6a2a2a; }
+    .muted { color:#a8a8a8; }
+    .kpi { display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi div { border:1px dashed #2a2a2a; border-radius:10px; padding:10px; }
+    .kpi .big { font-size: 18px; font-weight: 700; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding: 8px; border-bottom: 1px solid #222; vertical-align: top; }
+    th { text-align:left; color:#bdbdbd; font-weight:700; }
+    code { color:#e6e6e6; }
+    .hash { word-break: break-all; font-size: 12px; color:#cfcfcf; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #333; border-radius: 999px; color:#ddd; }
+    .footer { margin-top: 12px; color:#9a9a9a; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>⛓️ PSEUDO-BLOCKCHAIN VEHICLE CONTRACT LEDGER</h1>
+  <div class="muted">
+    Local-only HTML ledger (stores to <code>localStorage</code>). You can manually edit entries via export/import JSON.
+  </div>
+
+  <div class="grid" style="margin-top:14px;">
+    <div class="panel">
+      <h2>Contract</h2>
+
+      <label>Contract ID</label>
+      <input id="contractId" />
+
+      <div class="row">
+        <div>
+          <label>Seller</label>
+          <input id="seller" placeholder="Seller name" />
+        </div>
+        <div>
+          <label>Buyer</label>
+          <input id="buyer" placeholder="Buyer name" />
+        </div>
+      </div>
+
+      <label>Vehicle</label>
+      <input id="vehicle" />
+
+      <div class="row">
+        <div>
+          <label>Sale Price (USD)</label>
+          <input id="salePrice" type="number" step="0.01" />
+        </div>
+        <div>
+          <label>Monthly Payment (USD)</label>
+          <input id="monthlyPayment" type="number" step="0.01" />
+        </div>
+      </div>
+
+      <label>Agreement Text</label>
+      <textarea id="agreementText"></textarea>
+
+      <hr style="border:0;border-top:1px solid #222;margin:12px 0;" />
+
+      <h2>Ledger Entry</h2>
+
+      <label>Entry Type</label>
+      <select id="entryType">
+        <option value="PAYMENT">PAYMENT</option>
+        <option value="TOW_DEDUCTION">TOW_DEDUCTION</option>
+        <option value="NOTE">NOTE</option>
+        <option value="TITLE_TRANSFER">TITLE_TRANSFER</option>
+        <option value="FEE_DECISION">FEE_DECISION</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Amount (USD) — for PAYMENT or DEDUCTION</label>
+          <input id="entryAmount" type="number" step="0.01" placeholder="e.g., 300 or 185.50" />
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="entryDate" type="date" />
+        </div>
+      </div>
+
+      <label>Memo</label>
+      <textarea id="entryMemo" placeholder="e.g., 'January payment received via CashApp' or 'Tow bill deducted'"></textarea>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="addEntryBtn">Append Block</button>
+        <button id="saveContractBtn">Save Contract</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="exportBtn">Export JSON</button>
+        <button id="importBtn">Import JSON</button>
+      </div>
+
+      <button class="danger" id="resetBtn" style="margin-top:10px;">Reset Ledger (local only)</button>
+
+      <div class="footer">
+        Hash chain is “pseudo” (not crypto-secure for adversaries), but it *does* make accidental edits obvious.
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Status</h2>
+
+      <div class="kpi">
+        <div>
+          <div class="muted">Starting Price</div>
+          <div class="big" id="kpiPrice">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Balance Due</div>
+          <div class="big" id="kpiBalance">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Payments Total</div>
+          <div class="big" id="kpiPaid">$0.00</div>
+        </div>
+        <div>
+          <div class="muted">Deductions Total</div>
+          <div class="big" id="kpiDeduct">$0.00</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;" class="muted">
+        Contract ID: <span class="pill" id="kpiContractId">—</span>
+      </div>
+
+      <hr style="border:0;border-top:1px solid #222;margin:12px 0;" />
+
+      <h2>Ledger (Blocks)</h2>
+      <div class="muted" id="chainMeta"></div>
+
+      <div style="overflow:auto;margin-top:8px;">
+        <table id="ledgerTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Memo</th>
+              <th>Prev Hash</th>
+              <th>Hash</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        Tip: Use <b>NOTE</b> blocks for “inspection/registration later” and <b>TITLE_TRANSFER</b> when you do it.
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "sorento_pseudo_chain_v1";
+
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => {
+    const x = Number(n || 0);
+    return x.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  };
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const stableStringify = (obj) => {
+    // stable-ish stringify for predictable hashing
+    const seen = new WeakSet();
+    const sorter = (a, b) => a.localeCompare(b);
+    const walk = (v) => {
+      if (v && typeof v === "object") {
+        if (seen.has(v)) return "[Circular]";
+        seen.add(v);
+        if (Array.isArray(v)) return v.map(walk);
+        const out = {};
+        Object.keys(v).sort(sorter).forEach(k => out[k] = walk(v[k]));
+        return out;
+      }
+      return v;
+    };
+    return JSON.stringify(walk(obj));
+  };
+
+  // Pseudo hash: SHA-256 via SubtleCrypto when available
+  async function sha256Hex(str) {
+    const enc = new TextEncoder();
+    const data = enc.encode(str);
+    if (crypto && crypto.subtle) {
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      const bytes = new Uint8Array(digest);
+      return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    // Fallback (very weak) if SubtleCrypto unavailable
+    let h = 2166136261;
+    for (let i=0;i<str.length;i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return ("fnv1a_" + (h >>> 0).toString(16).padStart(8,"0"));
+  }
+
+  function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+  // ---------- Default Contract ----------
+  const DEFAULT = {
+    contract: {
+      contractId: "KIA-SORENTO-2007-" + Math.random().toString(16).slice(2,10).toUpperCase(),
+      seller: "Seller",
+      buyer: "Buyer",
+      vehicle: "2007 Kia Sorento",
+      salePrice: 1300.00,
+      monthlyPayment: 300.00,
+      agreementText:
+`We agree on the sale of the 2007 Kia Sorento for a total price of $1,300, to be paid at a rate of $300 per month. Any towing costs required to transport the vehicle will be deducted from the $1,300 total before payments are calculated. Monthly payments will continue until the remaining adjusted balance is paid in full, with the final payment reflecting whatever balance remains. The vehicle title will be transferred approximately halfway through the payment schedule, assuming payments remain on track. Inspection, registration, and related fees will be discussed and decided at a later date once the vehicle is confirmed to be functional, with repairs being handled through a mechanic chosen by the buyer. No interest will be charged, and this agreement is based on good-faith understanding between both parties.`
+    },
+    chain: [] // blocks
+  };
+
+  // ---------- Chain Logic ----------
+  async function makeGenesisIfEmpty(state){
+    if (state.chain.length) return state;
+    const genesis = {
+      index: 0,
+      timestamp: new Date().toISOString(),
+      type: "GENESIS",
+      date: todayISO(),
+      amount: 0,
+      memo: "Contract initialized.",
+      prevHash: "0".repeat(64),
+      contractSnapshot: clone(state.contract),
+    };
+    const hash = await sha256Hex(stableStringify(genesis));
+    genesis.hash = hash;
+    state.chain.push(genesis);
+    return state;
+  }
+
+  function computeTotals(contract, chain){
+    let paid = 0, deduct = 0;
+    for (const b of chain) {
+      if (b.type === "PAYMENT") paid += Number(b.amount || 0);
+      if (b.type === "TOW_DEDUCTION") deduct += Number(b.amount || 0);
+    }
+    const start = Number(contract.salePrice || 0);
+    const balance = Math.max(0, start - deduct - paid);
+    return { start, paid, deduct, balance };
+  }
+
+  async function appendBlock(state, {type, date, amount, memo}) {
+    const prev = state.chain[state.chain.length - 1];
+    const block = {
+      index: prev.index + 1,
+      timestamp: new Date().toISOString(),
+      type,
+      date,
+      amount: Number(amount || 0),
+      memo: memo || "",
+      prevHash: prev.hash,
+    };
+
+    // Optional: include contract snapshot when contract changes
+    if (type === "CONTRACT_UPDATE") block.contractSnapshot = clone(state.contract);
+
+    block.hash = await sha256Hex(stableStringify(block));
+    state.chain.push(block);
+    return state;
+  }
+
+  async function validateChain(chain){
+    for (let i=0;i<chain.length;i++){
+      const b = chain[i];
+      const copy = clone(b);
+      const claimedHash = copy.hash;
+      delete copy.hash;
+
+      const recomputed = await sha256Hex(stableStringify(copy));
+      if (recomputed !== claimedHash) return { ok:false, at:i, reason:"Hash mismatch" };
+
+      if (i === 0) {
+        if (b.prevHash !== "0".repeat(64)) return { ok:false, at:i, reason:"Bad genesis prevHash" };
+      } else {
+        if (b.prevHash !== chain[i-1].hash) return { ok:false, at:i, reason:"Broken prevHash link" };
+      }
+    }
+    return { ok:true };
+  }
+
+  // ---------- Persistence ----------
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return clone(DEFAULT);
+      const parsed = JSON.parse(raw);
+      // light sanity defaults
+      parsed.contract ||= clone(DEFAULT.contract);
+      parsed.chain ||= [];
+      return parsed;
+    } catch {
+      return clone(DEFAULT);
+    }
+  }
+  function saveState(state){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  // ---------- UI ----------
+  let state = loadState();
+
+  function fillContractUI(){
+    $("contractId").value = state.contract.contractId || "";
+    $("seller").value = state.contract.seller || "";
+    $("buyer").value = state.contract.buyer || "";
+    $("vehicle").value = state.contract.vehicle || "";
+    $("salePrice").value = Number(state.contract.salePrice || 0);
+    $("monthlyPayment").value = Number(state.contract.monthlyPayment || 0);
+    $("agreementText").value = state.contract.agreementText || "";
+    $("entryDate").value = todayISO();
+    $("entryAmount").value = "";
+    $("entryMemo").value = "";
+  }
+
+  async function render(){
+    await makeGenesisIfEmpty(state);
+
+    const totals = computeTotals(state.contract, state.chain);
+    $("kpiPrice").textContent = money(totals.start);
+    $("kpiPaid").textContent = money(totals.paid);
+    $("kpiDeduct").textContent = money(totals.deduct);
+    $("kpiBalance").textContent = money(totals.balance);
+    $("kpiContractId").textContent = state.contract.contractId || "—";
+
+    const validity = await validateChain(state.chain);
+    const meta = [];
+    meta.push(`Blocks: ${state.chain.length}`);
+    meta.push(validity.ok ? `Chain: OK` : `Chain: BROKEN @ #${validity.at} (${validity.reason})`);
+    $("chainMeta").textContent = meta.join("   |   ");
+
+    const tbody = $("ledgerTable").querySelector("tbody");
+    tbody.innerHTML = "";
+
+    for (const b of state.chain) {
+      const tr = document.createElement("tr");
+
+      const amountDisp = (b.type === "PAYMENT" || b.type === "TOW_DEDUCTION")
+        ? money(b.amount)
+        : (b.amount ? String(b.amount) : "—");
+
+      tr.innerHTML = `
+        <td>${b.index}</td>
+        <td><span class="pill">${escapeHtml(b.type)}</span></td>
+        <td>${escapeHtml((b.date || "").toString())}</td>
+        <td>${escapeHtml(amountDisp)}</td>
+        <td>${escapeHtml((b.memo || "").toString())}</td>
+        <td class="hash">${escapeHtml((b.prevHash || "").slice(0,22))}…</td>
+        <td class="hash">${escapeHtml((b.hash || "").slice(0,22))}…</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
+  // ---------- Actions ----------
+  $("saveContractBtn").addEventListener("click", async () => {
+    state.contract.contractId = $("contractId").value.trim();
+    state.contract.seller = $("seller").value.trim();
+    state.contract.buyer = $("buyer").value.trim();
+    state.contract.vehicle = $("vehicle").value.trim();
+    state.contract.salePrice = Number($("salePrice").value || 0);
+    state.contract.monthlyPayment = Number($("monthlyPayment").value || 0);
+    state.contract.agreementText = $("agreementText").value;
+
+    // Record a contract update as a block (so changes are auditable)
+    state = await appendBlock(state, {
+      type: "CONTRACT_UPDATE",
+      date: $("entryDate").value || todayISO(),
+      amount: 0,
+      memo: "Contract fields updated."
+    });
+
+    saveState(state);
+    await render();
+  });
+
+  $("addEntryBtn").addEventListener("click", async () => {
+    const type = $("entryType").value;
+    const date = $("entryDate").value || todayISO();
+    const memo = $("entryMemo").value || "";
+
+    let amt = $("entryAmount").value;
+    if (type === "PAYMENT" || type === "TOW_DEDUCTION") {
+      if (amt === "" || isNaN(Number(amt))) {
+        alert("Enter a valid amount for PAYMENT or TOW_DEDUCTION.");
+        return;
+      }
+      amt = Number(amt);
+      if (amt <= 0) {
+        alert("Amount should be greater than 0.");
+        return;
+      }
+    } else {
+      amt = Number(amt || 0);
+    }
+
+    state = await appendBlock(state, { type, date, amount: amt, memo });
+    saveState(state);
+    $("entryAmount").value = "";
+    $("entryMemo").value = "";
+    await render();
+  });
+
+  $("exportBtn").addEventListener("click", () => {
+    const data = JSON.stringify(state, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${state.contract.contractId || "contract"}_ledger.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  $("importBtn").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const parsed = JSON.parse(text);
+        if (!parsed.contract || !parsed.chain) throw new Error("Missing contract/chain");
+        state = parsed;
+        saveState(state);
+        fillContractUI();
+        await render();
+      } catch (e) {
+        alert("Import failed: " + e.message);
+      }
+    };
+    input.click();
+  });
+
+  $("resetBtn").addEventListener("click", async () => {
+    if (!confirm("Reset contract + chain stored in this browser?")) return;
+    state = clone(DEFAULT);
+    saveState(state);
+    fillContractUI();
+    await render();
+  });
+
+  // ---------- Init ----------
+  fillContractUI();
+  render();
+})();
+</script>
+</body>
+</html>

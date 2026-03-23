@@ -1,0 +1,5 @@
+#!/bin/bash
+wmctrl -a $1
+shift
+#fold -w1 <<<"$@" | xargs -I% -- xdotool key %
+xte "str $@"

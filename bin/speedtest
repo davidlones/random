@@ -1,0 +1,4 @@
+#!/bin/bash
+date
+/usr/bin/speedtest-cli --simple --secure
+#--server 1859

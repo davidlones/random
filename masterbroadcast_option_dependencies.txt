@@ -1,0 +1,58 @@
+Masterbroadcast Option Dependency Map (updated 2026-03-02)
+
+Core runtime files
+- random/bin/masterbroadcast.py
+- random/bin/11speak.py
+- .config/masterbot.env
+  - DISCORD_TOKEN (required)
+  - ELEVENLABS_API_KEY (required for synthesis)
+  - OPENAI_API_KEY (used by current masterbot runtime environment; not required by masterbroadcast itself)
+
+Operational docs
+- random/bin/masterbroadcast.README.md
+- random/bin/11speak.README.md
+- random/bin/masterbot_v3.README.md
+
+External runtime prerequisites (not packaged as files)
+- python3 with installed deps:
+  - discord.py >= 2.7.0 (voice transport compatibility)
+  - davey (required by newer discord.py voice stack)
+  - openai client used by surrounding runtime
+- ffmpeg on PATH (voice playback)
+- user systemd available for daemon control flags:
+  - systemctl --user stop/start <service>
+
+Option-specific dependencies
+- --preset masterbot-all
+  - random/logs/masterbot.db
+    - reads runtime_config.voice_loop_preset_channel_ids
+    - reads runtime_config.server_room_status_channel_ids
+  - fallback IDs are hardcoded in masterbroadcast.py if DB/runtime keys are missing
+
+- --reuse-last-console-messages
+  - random/logs/masterbroadcast_console_messages.json
+    - cache of channel_id -> message_id for compatible MASTERBROADCAST LIVE messages
+    - auto-updated by masterbroadcast.py
+
+- --interrupt-masterbot (default), --stop-masterbot, --start-masterbot, --masterbot-service
+  - .config/systemd/user/masterbot.service (or overridden service name)
+  - service control performed through systemctl --user
+
+- --script-preset mock-emergency-flash
+  - no external text file required (payload embedded in masterbroadcast.py)
+
+State/cache files included for current environment compatibility
+- random/logs/masterbot_cli_llm_cache.json
+- random/logs/masterbot_cli_memory.json
+- random/logs/sol_embeddings.pkl
+
+Voiceovers included in this package (only masterbot_* assets)
+- random/masterbot_48h_summary_boot.mp3
+- random/masterbot_last_major_change_boot.mp3
+- random/masterbot_project_overview_boot.mp3
+- random/masterbot_screenplay_room_where_software_lives.mp3
+- random/masterbot_system_status_tts.mp3
+- random/masterbot_system_status_tts_alt1.mp3
+- random/masterbot_system_status_tts_alt2.mp3
+- random/masterbot_system_status_tts_alt3.mp3
+- random/masterbot_system_status_tts_alt4.mp3

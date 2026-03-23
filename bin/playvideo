@@ -1,0 +1,32 @@
+#!/bin/bash
+#_0853rv3r
+
+SCREEN_W=1366
+SCREEN_H=768
+
+SCREEN_A=$(bc -l <<< "$SCREEN_W/$SCREEN_H")
+
+VIDEO_W=$(mplayer -really-quiet -ao null -vo null -identify -frames 0 $1 |sed -n -e 's/^.*ID_VIDEO_WIDTH=//p')
+VIDEO_H=$(mplayer -really-quiet -ao null -vo null -identify -frames 0 $1 |sed -n -e 's/^.*ID_VIDEO_HEIGHT=//p')
+VIDEO_A=$(bc -l <<< "$VIDEO_W/$VIDEO_H")
+
+
+if (( $(bc <<< "$SCREEN_A > $VIDEO_A") )); then
+    NEW_W=$(bc <<< "($VIDEO_W * $SCREEN_H / $VIDEO_H)/1")
+    NEW_H=$SCREEN_H
+fi
+
+if (( $(bc <<< "$SCREEN_A < $VIDEO_A") )); then
+    NEW_W=$SCREEN_W
+    NEW_H=$(bc <<< "($VIDEO_H * $SCREEN_W / $VIDEO_W)/1")
+fi
+
+if (( $(bc <<< "$SCREEN_A = $VIDEO_A") )); then
+    NEW_W=$SCREEN_W
+    NEW_H=$SCREEN_H
+fi
+
+
+setterm -cursor off
+mplayer -loop 0 -quiet -vo fbdev2 -fs -zoom -x $NEW_W -y $NEW_H "$@"
+setterm -cursor on

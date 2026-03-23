@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum Board — Clean Build</title>
+<style>
+  :root { --aspect-w: 1200; --aspect-h: 800; }
+  html, body { height:100%; margin:0; background:#b97854; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; }
+  .wrap {
+    max-width: 1200px;
+    margin: 16px auto;
+    padding: 8px;
+  }
+  .frame {
+    position: relative;
+    width: 100%;
+    /* Keep aspect ratio */
+    aspect-ratio: var(--aspect-w) / var(--aspect-h);
+    box-shadow: 0 20px 50px rgba(0,0,0,.35);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #c69c6d;
+  }
+  canvas {
+    position:absolute; inset:0;
+    width: 100%; height: 100%; /* CSS scaling only */
+    image-rendering: crisp-edges;
+    touch-action: none; /* better touch dragging */
+  }
+  .toolbar {
+    display:flex; flex-wrap: wrap; gap:10px; margin-bottom: 10px;
+  }
+  .btn {
+    background:#111827; color:#fff; border:none; border-radius:8px; padding:10px 12px;
+    font-weight:700; cursor:pointer; font-size:14px; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  .btn.secondary { background:#334155; }
+  .hint { color:#1f2937; background: rgba(255,255,255,.55); padding:8px 10px; border-radius:8px; margin-top:8px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <button class="btn" id="addNote">+ Note</button>
+      <button class="btn" id="addTask">+ Task</button>
+      <button class="btn secondary" id="toggleStrings">Strings: on</button>
+      <button class="btn secondary" id="exportPNG">Export PNG</button>
+      <button class="btn secondary" id="save">Save</button>
+      <button class="btn secondary" id="reset">Reset</button>
+    </div>
+    <div class="frame">
+      <!-- Fixed logical size canvas; CSS scales to fit -->
+      <canvas id="board" width="1200" height="800" aria-label="Quantum Corkboard"></canvas>
+    </div>
+    <div class="hint">Drag notes; double-tap/double-click to edit. Tap checkboxes to toggle tasks. Timer: tap to Start/Stop; long-press/right-click to reset. Strings connect notes to the date card. Timer pauses when the tab is hidden.</div>
+  </div>
+
+<script>
+// ===== Setup (fixed logical size) =====
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const TAU = Math.PI*2;
+const isTouch = 'ontouchstart' in window;
+
+// ===== State =====
+const DEFAULT = {
+  date: { title: "November 4", subtitle: "Tuesday 2025" },
+  dateCard: { x: 430, y: 90, w: 340, h: 110 },
+  notes: [
+    { id:'sale',  x: 70,  y: 120, w:260, h:160, title:"Sale?", content:"", color:"#FEF9C3" },
+    { id:'fall',  x: 880, y: 140, w:280, h:160, title:"", content:"Fall decorations\nBring down\nfrom attic", color:"#FEF9C3" },
+    { id:'edit',  x: 80,  y: 460, w:300, h:180, title:"", content:"(double-click to edit)", color:"#FEF9C3" },
+    { id:'offer', x: 880, y: 480, w:280, h:160, title:"Offer\naccepted?", content:"", color:"#FEF9C3" }
+  ],
+  tasksCard: { x: 420, y: 320, w: 360, h: 280 },
+  tasks: [
+    { text:"DVDs boxed up to take to Half-Price", done:false },
+    { text:"Clean kitchen", done:false },
+    { text:"Take out trash", done:false },
+    { text:"Goal of the week: clear living room to clean carpet", done:false }
+  ],
+  timer: { x: W-240, y: 16, w: 220, h: 150, seconds: 5*60, running:false },
+  stringsOn: true
+};
+const state = load() || DEFAULT;
+
+// ===== Helpers =====
+function roundedRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawPin(cx,cy){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=6; ctx.shadowOffsetY=2;
+  const g=ctx.createRadialGradient(cx-3,cy-3,1,cx,cy,10);
+  g.addColorStop(0,'#d64545'); g.addColorStop(1,'#a83232');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,10,0,TAU); ctx.fill();
+  ctx.shadowBlur=0; ctx.fillStyle='#8b2020'; ctx.fillRect(cx-1,cy+8,2,6);
+  ctx.restore();
+}
+function cork(){ ctx.fillStyle='#c69c6d'; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=.12; for(let i=0;i<900;i++){ const x=Math.random()*W,y=Math.random()*H,r=Math.random()*1.2;
+    ctx.fillStyle='rgba(0,0,0,.8)'; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); } ctx.globalAlpha=1; }
+function drawNote(n){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,.25)'; ctx.shadowBlur=12; ctx.shadowOffsetX=3; ctx.shadowOffsetY=6;
+  ctx.fillStyle=n.color||'#FEF9C3'; roundedRect(n.x,n.y,n.w,n.h,6); ctx.fill();
+  ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
+  drawPin(n.x+n.w/2, n.y-6);
+  ctx.fillStyle='#111'; ctx.font='700 20px "Comic Sans MS", system-ui';
+  let yy=n.y+26; if(n.title){ ctx.fillText(n.title, n.x+14, yy); yy+=28; }
+  ctx.font='16px "Comic Sans MS", system-ui';
+  (n.content||'').split(/\n/).forEach((ln,i)=> ctx.fillText(ln, n.x+14, yy+i*22));
+  ctx.restore();
+}
+function drawDate(){
+  const r=state.dateCard;
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=12; ctx.shadowOffsetY=3;
+  roundedRect(r.x,r.y,r.w,r.h,10); ctx.fillStyle='#2d2d2d'; ctx.fill();
+  ctx.shadowBlur=0; ctx.fillStyle='#fff'; ctx.textAlign='center';
+  ctx.font='700 42px Inter, system-ui'; ctx.fillText(state.date.title, r.x+r.w/2, r.y+58);
+  ctx.font='500 18px Inter, system-ui'; ctx.globalAlpha=.9; ctx.fillText(state.date.subtitle, r.x+r.w/2, r.y+86);
+  ctx.globalAlpha=1; ctx.textAlign='left'; ctx.restore();
+}
+function drawStrings(){
+  if(!state.stringsOn) return;
+  const r=state.dateCard, cx=r.x+r.w/2, cy=r.y+r.h/2;
+  ctx.save(); ctx.strokeStyle='#b42323'; ctx.lineWidth=3; ctx.lineCap='round';
+  state.notes.forEach(n=>{ const nx=n.x+n.w/2, ny=n.y+10; ctx.beginPath(); ctx.moveTo(nx,ny);
+    const mx=(nx+cx)/2, my=(ny+cy)/2-30; ctx.quadraticCurveTo(mx,my,cx,cy); ctx.stroke(); });
+  ctx.restore();
+}
+function drawTasks(){
+  const r=state.tasksCard, pad=16, lineH=28, box=18;
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,.25)'; ctx.shadowBlur=12; ctx.shadowOffsetY=3;
+  roundedRect(r.x,r.y,r.w,r.h,6); ctx.fillStyle='#e8dcc4'; ctx.fill(); ctx.shadowBlur=0;
+  let y=r.y+pad+8; ctx.font='15px Arial'; ctx.fillStyle='#111';
+  state.tasks.forEach((t,i)=>{
+    ctx.lineWidth=2; ctx.strokeStyle='#333'; ctx.strokeRect(r.x+pad, y-box+8, box, box);
+    if(t.done){ ctx.fillStyle='#4ade80'; ctx.fillRect(r.x+pad, y-box+8, box, box);
+      ctx.fillStyle='#fff'; ctx.font='bold 14px Arial'; ctx.fillText('✓', r.x+pad+4, y+2);
+      ctx.font='15px Arial'; ctx.fillStyle='#333'; ctx.globalAlpha=.65; }
+    else { ctx.globalAlpha=1; ctx.fillStyle='#111'; ctx.font='15px Arial'; }
+    ctx.fillText(t.text, r.x+pad+box+10, y);
+    ctx.globalAlpha=1; y+=lineH;
+  });
+  ctx.fillStyle='#4ade80'; roundedRect(r.x+pad, r.y+r.h-pad-20, 110, 26, 4); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px Arial'; ctx.fillText('+ Add Task', r.x+pad+12, r.y+r.h-pad-2);
+  ctx.restore();
+}
+function drawTimer(){
+  const r=state.timer;
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,.25)'; ctx.shadowBlur=10; ctx.shadowOffsetY=2;
+  roundedRect(r.x,r.y,r.w,r.h,10); ctx.fillStyle='#fff'; ctx.fill(); ctx.shadowBlur=0;
+  ctx.fillStyle='#64748b'; ctx.font='12px Inter'; ctx.fillText('Quantum Timer', r.x+12, r.y+18);
+  const m=Math.floor(r.seconds/60), s=Math.floor(r.seconds%60);
+  ctx.fillStyle='#111827'; ctx.font='bold 28px "Courier New", ui-monospace';
+  ctx.fillText(String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'), r.x+12, r.y+52);
+  ctx.font='12px Inter'; ctx.fillStyle='#6b7280'; ctx.fillText(r.running?'Observed':'Unobserved (paused)', r.x+12, r.y+70);
+  // buttons
+  ctx.fillStyle=r.running?'#f87171':'#4ade80'; roundedRect(r.x+12, r.y+84, 80, 28, 6); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.fillText(r.running?'Stop':'Start', r.x+12+22, r.y+102);
+  ctx.fillStyle='#94a3b8'; roundedRect(r.x+100, r.y+84, 80, 28, 6); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.fillText('Reset', r.x+100+26, r.y+102);
+  // disclaimer
+  ctx.fillStyle='#475569'; ctx.font='11px Inter';
+  ctx.fillText('Disclaimer: advances only while visible; pauses when hidden.', r.x+12, r.y+124);
+  ctx.restore();
+}
+function footer(){ ctx.save();
+  ctx.fillStyle='rgba(255,255,255,.6)'; roundedRect(24,H-40,420,26,6); ctx.fill();
+  ctx.fillStyle='#1f2937'; ctx.font='13px Inter'; ctx.fillText('Reality status: subject to revision. Keep your receipts 🧷', 34, H-23);
+  ctx.restore(); }
+
+// ===== Interaction =====
+let draggingId=null, dragDX=0, dragDY=0;
+const downEvt = isTouch? 'touchstart':'mousedown';
+const moveEvt = isTouch? 'touchmove':'mousemove';
+const upEvt   = isTouch? 'touchend':'mouseup';
+function pos(evt){ const rect=canvas.getBoundingClientRect();
+  const cx=(evt.clientX ?? evt.touches?.[0]?.clientX)-rect.left;
+  const cy=(evt.clientY ?? evt.touches?.[0]?.clientY)-rect.top;
+  const sx = canvas.width/rect.width, sy = canvas.height/rect.height;
+  return { x: cx*sx, y: cy*sy };
+}
+canvas.addEventListener(downEvt, e=>{
+  const p=pos(e);
+  // timer click
+  if(hit(p, state.timer)){ state.timer.running=!state.timer.running; save(); return; }
+  // tasks
+  const tHit=tasksHit(p);
+  if(tHit){ if(tHit.kind==='box'){ state.tasks[tHit.index].done=!state.tasks[tHit.index].done; save(); return; }
+            if(tHit.kind==='text'){ const t=prompt('Edit task:', state.tasks[tHit.index].text); if(t!==null){ state.tasks[tHit.index].text=t; save(); } return; }
+            if(tHit.kind==='add'){ state.tasks.push({text:'New task…', done:false}); save(); return; } }
+  // notes drag
+  for(let i=state.notes.length-1;i>=0;i--){ const n=state.notes[i];
+    if(hit(p,n)){ draggingId=n.id; dragDX=p.x-n.x; dragDY=p.y-n.y; state.notes.splice(i,1); state.notes.push(n); return; } }
+});
+canvas.addEventListener(moveEvt, e=>{ if(!draggingId) return; const p=pos(e);
+  const n=state.notes.find(n=>n.id===draggingId); if(!n) return; n.x=p.x-dragDX; n.y=p.y-dragDY; });
+canvas.addEventListener(upEvt, ()=>{ if(draggingId){ draggingId=null; save(); } });
+canvas.addEventListener('dblclick', e=>{ const p=pos(e);
+  for(let i=state.notes.length-1;i>=0;i--){ const n=state.notes[i];
+    if(hit(p,n)){ const t=prompt('Note title (optional):', n.title||''); if(t!==null) n.title=t;
+                  const c=prompt('Note content:', n.content||''); if(c!==null) n.content=c; save(); return; } } });
+canvas.addEventListener('contextmenu', e=>{ const p=pos(e);
+  if(hit(p,state.timer)){ e.preventDefault(); state.timer.seconds=5*60; state.timer.running=false; save(); } });
+
+function hit(p, r){ return p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h; }
+function tasksHit(p){ const r=state.tasksCard, pad=16, lineH=28, box=18;
+  if(!hit(p,r)) return null; let y=r.y+pad+8;
+  for(let i=0;i<state.tasks.length;i++){ const bx=r.x+pad, by=y-box+8;
+    if(p.x>=bx && p.x<=bx+box && p.y>=by && p.y<=by+box) return {kind:'box', index:i};
+    if(p.x>=bx+box+10 && p.x<=r.x+r.w-pad && p.y>=y-20 && p.y<=y+6) return {kind:'text', index:i};
+    y+=lineH;
+  }
+  const addY=r.y+r.h-pad-20, addX=r.x+pad;
+  if(p.x>=addX && p.x<=addX+110 && p.y>=addY && p.y<=addY+26) return {kind:'add'};
+  return null;
+}
+
+// ===== Toolbar =====
+document.getElementById('addNote').onclick=()=>{ const id='n'+Math.random().toString(36).slice(2,7);
+  state.notes.push({ id, x:120, y:200, w:260, h:160, title:'', content:'New note', color:'#FEF9C3' }); save(); };
+document.getElementById('addTask').onclick=()=>{ state.tasks.push({text:'New task…', done:false}); save(); };
+document.getElementById('toggleStrings').onclick=(e)=>{ state.stringsOn=!state.stringsOn; e.target.textContent='Strings: '+(state.stringsOn?'on':'off'); save(); };
+document.getElementById('save').onclick=save;
+document.getElementById('reset').onclick=()=>{ localStorage.removeItem('quantumBoard_clean'); localStorage.removeItem('quantumBoardV1'); localStorage.removeItem('quantumBoardV2'); location.reload(); };
+document.getElementById('exportPNG').onclick=()=>{ const url=canvas.toDataURL('image/png'); const a=document.createElement('a'); a.href=url; a.download='quantum_board.png'; a.click(); };
+
+// ===== Persistence =====
+function save(){ localStorage.setItem('quantumBoard_clean', JSON.stringify(state)); }
+function load(){ try{ const s=JSON.parse(localStorage.getItem('quantumBoard_clean')); return s; } catch{ return null; } }
+
+// ===== Quantum pause =====
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) state.timer.running=false; });
+
+// ===== Loop =====
+let last=performance.now();
+function loop(t){
+  const dt=(t-last)/1000; last=t;
+  if(state.timer.running && !document.hidden){ state.timer.seconds=Math.max(0, state.timer.seconds-dt); if(state.timer.seconds<=0) state.timer.running=false; }
+  // draw
+  cork(); drawStrings(); state.notes.forEach(drawNote); drawDate(); drawTasks(); drawTimer(); footer();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

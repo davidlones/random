@@ -1,0 +1,2 @@
+#!/bin/bash
+slowcat.py -d 0.08 <.bin/tv.vt

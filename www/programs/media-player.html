@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sol-37 Media Player</title>
+  <style>
+    :root {
+      --qt-silver-1: #f7f7f9;
+      --qt-silver-2: #dee1e8;
+      --qt-silver-3: #b9bfcc;
+      --qt-silver-4: #838b99;
+      --qt-silver-5: #545b69;
+      --qt-shadow: rgba(10, 16, 32, 0.34);
+      --qt-blue: #7ea2d8;
+      --qt-blue-2: #4d78b6;
+      --qt-blue-3: #274d86;
+      --qt-text: #151821;
+      --qt-muted: #5f6676;
+      --qt-panel: rgba(255, 255, 255, 0.76);
+      --qt-panel-border: rgba(62, 74, 95, 0.32);
+      --qt-black: #060709;
+      --qt-timer: #d9dfb5;
+      --qt-timer-edge: #8b9164;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top, rgba(168, 187, 220, 0.55), transparent 38%),
+        linear-gradient(180deg, #e4e7ef 0%, #c4cad7 48%, #b4bac7 100%);
+      color: var(--qt-text);
+      font-family: "Lucida Grande", "Trebuchet MS", Verdana, sans-serif;
+      overflow: auto;
+    }
+
+    body.embedded {
+      overflow: hidden;
+    }
+
+    .viewport {
+      min-height: 100%;
+      padding: 28px;
+      display: grid;
+      place-items: center;
+    }
+
+    body.embedded .viewport {
+      height: 100%;
+      min-height: 0;
+      padding: 12px;
+    }
+
+    .player-shell {
+      width: min(100%, 720px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      border-radius: 12px;
+      border: 1px solid rgba(94, 103, 120, 0.72);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(233, 236, 243, 0.92) 18%, rgba(191, 197, 209, 0.94) 100%);
+      box-shadow:
+        0 18px 44px var(--qt-shadow),
+        inset 0 1px 0 rgba(255,255,255,0.95),
+        inset 0 -1px 0 rgba(69, 76, 91, 0.38);
+      overflow: hidden;
+    }
+
+    body.embedded .player-shell {
+      width: 100%;
+      min-height: 0;
+      height: 100%;
+      border-radius: 10px;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .utility-pill,
+    .control-pad button {
+      border: 1px solid rgba(72, 80, 96, 0.34);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.92),
+        0 1px 0 rgba(255,255,255,0.48);
+    }
+
+    .control-pad button:hover {
+      filter: brightness(1.03);
+    }
+
+    .control-pad button:active {
+      transform: translateY(1px);
+    }
+
+    .content {
+      min-height: 0;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 12px 8px;
+      background: linear-gradient(180deg, rgba(244,246,250,0.42) 0%, rgba(224,228,236,0.32) 100%);
+    }
+
+    .viewer {
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .screen-wrap {
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .viewer-meta {
+      display: none;
+    }
+
+    .screen-shell {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      padding: 10px;
+      background:
+        linear-gradient(180deg, #444a58 0%, #21252d 12%, #090a0d 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.18),
+        inset 0 -1px 0 rgba(255,255,255,0.06),
+        0 12px 26px rgba(17, 21, 28, 0.25);
+    }
+
+    .screen-inner {
+      width: auto;
+      min-width: min(100%, 320px);
+      height: min(100%, clamp(320px, 58vh, 500px));
+      aspect-ratio: var(--video-aspect, 9 / 16);
+      max-width: 100%;
+      max-height: 100%;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at top, rgba(73, 115, 180, 0.16), transparent 24%),
+        #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.1),
+        inset 0 0 60px rgba(255,255,255,0.03);
+    }
+
+    body.embedded .screen-inner {
+      min-height: 0;
+      height: min(100%, clamp(300px, 56vh, 500px));
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      object-fit: contain;
+      object-position: center center;
+    }
+
+    .controls-bar {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 12px 8px;
+      background:
+        linear-gradient(180deg, rgba(230,233,240,0.95) 0%, rgba(196,202,213,0.94) 100%);
+      border-top: 1px solid rgba(255,255,255,0.8);
+    }
+
+    .transport-cluster {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .time-readout {
+      height: 20px;
+      border: 1px solid rgba(107, 113, 84, 0.6);
+      border-radius: 2px;
+      background: linear-gradient(180deg, #eef1d7 0%, var(--qt-timer) 100%);
+      color: #31351f;
+      font-family: "Tahoma", "Lucida Grande", sans-serif;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+      cursor: pointer;
+    }
+
+    .transport-lower {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .scrub-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .scrub-glyph {
+      color: #585d44;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .scrubber {
+      position: relative;
+      height: 11px;
+      border: 1px solid rgba(107, 113, 84, 0.6);
+      border-radius: 2px;
+      background: linear-gradient(180deg, #edf0d4 0%, #cfd6a2 100%);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.68);
+      cursor: pointer;
+    }
+
+    .scrubber-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      background: linear-gradient(180deg, #c7cf97 0%, #98a15d 100%);
+      pointer-events: none;
+    }
+
+    .scrubber-buffered {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0%;
+      background: linear-gradient(180deg, rgba(237, 240, 212, 0.95) 0%, rgba(177, 188, 126, 0.88) 100%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .scrubber-thumb {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      width: 10px;
+      height: 14px;
+      transform: translate(-50%, -50%);
+      border-radius: 2px;
+      background: linear-gradient(180deg, #fdfefe 0%, #d7dce4 100%);
+      border: 1px solid rgba(90, 97, 112, 0.42);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.55);
+      pointer-events: none;
+    }
+
+    .control-pad {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding-bottom: 2px;
+    }
+
+    .control-pad button {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, #ffffff 0%, #d4d9e2 58%, #a8b0bf 100%);
+      color: #3a4354;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0;
+    }
+
+    .control-pad button#play-btn {
+      width: 32px;
+      height: 32px;
+      font-size: 14px;
+    }
+
+    .statusbar {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      padding: 0 12px 8px;
+      background:
+        linear-gradient(180deg, rgba(230,233,240,0.95) 0%, rgba(196,202,213,0.94) 100%);
+      font-size: 11px;
+      color: #4f5667;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .status-line {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-right {
+      display: flex;
+      gap: 14px;
+      justify-content: flex-end;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 720px) {
+      .viewport {
+        padding: 10px;
+      }
+
+      .player-shell {
+        min-height: calc(100vh - 20px);
+      }
+
+      .controls-bar,
+      .statusbar {
+        grid-template-columns: 1fr;
+      }
+
+      .content {
+        padding: 10px 10px 6px;
+      }
+
+      .screen-inner {
+        height: min(100%, clamp(240px, 48vh, 420px));
+        min-height: 240px;
+        max-width: 100%;
+      }
+
+      .transport-cluster {
+        grid-template-columns: 1fr;
+      }
+
+      .statusbar {
+        gap: 8px;
+      }
+
+      .status-right {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="viewport">
+    <section class="player-shell" aria-label="Media player">
+      <section class="content">
+        <section class="viewer">
+          <div class="screen-wrap">
+            <div class="screen-shell">
+              <div class="screen-inner">
+                <video id="player" preload="auto" playsinline poster="/video-poster.jpg" controlslist="nodownload noplaybackrate nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback x-webkit-airplay="deny"></video>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="controls-bar">
+        <div class="transport-cluster">
+          <div class="time-readout" id="time-readout">00:00:00</div>
+          <div class="transport-lower">
+            <div class="scrub-row">
+              <div class="scrub-glyph">⏳</div>
+              <div class="scrubber" aria-hidden="true">
+                <div class="scrubber-buffered" id="scrubber-buffered"></div>
+                <div class="scrubber-fill" id="scrubber-fill"></div>
+                <div class="scrubber-thumb" id="scrubber-thumb"></div>
+              </div>
+            </div>
+            <div class="control-pad" aria-label="Playback controls">
+              <button type="button" id="prev-btn" aria-label="Previous clip">|&lt;</button>
+              <button type="button" id="back-btn" aria-label="Back a few seconds">&lt;&lt;</button>
+              <button type="button" id="play-btn" aria-label="Pause playback">&#9654;</button>
+              <button type="button" id="forward-btn" aria-label="Forward a few seconds">&gt;&gt;</button>
+              <button type="button" id="next-btn" aria-label="Next clip">&gt;|</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="statusbar">
+        <div class="status-line" id="footer-line">Waiting for playlist data.</div>
+        <div class="status-right">
+          <span id="playback-line">Idle</span>
+          <span id="duration-line">Duration: --</span>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const player = document.getElementById("player");
+    const preloadPlayer = document.createElement("video");
+    preloadPlayer.preload = "auto";
+    preloadPlayer.muted = true;
+    preloadPlayer.playsInline = true;
+    const footerEl = document.getElementById("footer-line");
+    const playbackEl = document.getElementById("playback-line");
+    const durationEl = document.getElementById("duration-line");
+    const playBtn = document.getElementById("play-btn");
+    const timeReadoutEl = document.getElementById("time-readout");
+    const scrubberEl = document.querySelector(".scrubber");
+    const scrubberBufferedEl = document.getElementById("scrubber-buffered");
+    const scrubberFillEl = document.getElementById("scrubber-fill");
+    const scrubberThumbEl = document.getElementById("scrubber-thumb");
+
+    const state = {
+      tracks: [],
+      index: 0,
+      sourceIndex: 0,
+      pendingAutoPlay: false,
+      skipTimer: null,
+      pendingSeekTime: null,
+      pendingSeekResume: false,
+      seekDragActive: false,
+      lastProgressSignature: "",
+      preloadedSourceFile: ""
+    };
+
+    if (window.top !== window.self) {
+      document.body.classList.add("embedded");
+    }
+
+    function mimeForCodec(codec) {
+      const value = (codec || "").toLowerCase();
+      if (value === "h264") return 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+      if (value === "hevc") return 'video/mp4; codecs="hvc1, mp4a.40.2"';
+      return "video/mp4";
+    }
+
+    function canPlayCodec(codec) {
+      const result = player.canPlayType(mimeForCodec(codec));
+      return result === "probably" || result === "maybe";
+    }
+
+    function formatDuration(seconds) {
+      if (!Number.isFinite(seconds) || seconds <= 0) return "--";
+      const rounded = Math.round(seconds);
+      const mins = Math.floor(rounded / 60);
+      const secs = String(rounded % 60).padStart(2, "0");
+      return `${mins}:${secs}`;
+    }
+
+    function formatClock(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return "00:00:00";
+      const rounded = Math.floor(seconds);
+      const hours = String(Math.floor(rounded / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((rounded % 3600) / 60)).padStart(2, "0");
+      const secs = String(rounded % 60).padStart(2, "0");
+      return `${hours}:${minutes}:${secs}`;
+    }
+
+    function seekToRatio(ratio) {
+      const duration = getDuration();
+      if (!duration) return;
+      const clamped = Math.min(1, Math.max(0, ratio));
+      seekToTime(duration * clamped);
+    }
+
+    function getDuration() {
+      return Number.isFinite(player.duration) && player.duration > 0 ? player.duration : 0;
+    }
+
+    function getLastRangeEnd(ranges) {
+      if (!ranges || !ranges.length) return 0;
+      try {
+        return ranges.end(ranges.length - 1);
+      } catch {
+        return 0;
+      }
+    }
+
+    function getSeekBounds() {
+      const duration = getDuration();
+      if (!duration) return null;
+      const ranges = player.seekable;
+      if (!ranges || !ranges.length) return { start: 0, end: duration };
+      try {
+        return {
+          start: ranges.start(0),
+          end: ranges.end(ranges.length - 1)
+        };
+      } catch {
+        return { start: 0, end: duration };
+      }
+    }
+
+    function clampSeekTarget(seconds) {
+      const bounds = getSeekBounds();
+      if (!bounds) return null;
+      return Math.min(bounds.end, Math.max(bounds.start, seconds));
+    }
+
+    function seekToTime(seconds) {
+      const target = clampSeekTarget(seconds);
+      if (!Number.isFinite(target)) return;
+      const delta = Math.abs((player.currentTime || 0) - target);
+      const bufferedEnd = getLastRangeEnd(player.buffered);
+      const coldSeek = target > bufferedEnd + 1.5;
+      state.pendingSeekTime = target;
+      state.pendingSeekResume = !player.paused;
+      if (coldSeek && !player.paused) {
+        player.pause();
+      }
+      setPlaybackState(coldSeek ? "Buffering" : "Seeking");
+      if (typeof player.fastSeek === "function" && delta > 1.5) {
+        player.fastSeek(target);
+      } else {
+        player.currentTime = target;
+      }
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const current = Number.isFinite(player.currentTime) ? player.currentTime : 0;
+      const duration = getDuration();
+      const percent = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
+      const bufferedEnd = duration > 0 ? Math.min(duration, getLastRangeEnd(player.buffered)) : 0;
+      const bufferedPercent = duration > 0 ? Math.min(100, (bufferedEnd / duration) * 100) : 0;
+      const signature = `${Math.floor(current * 10)}|${Math.floor(bufferedEnd * 10)}|${Math.floor(duration * 10)}`;
+      if (signature === state.lastProgressSignature && !state.seekDragActive) return;
+      state.lastProgressSignature = signature;
+      timeReadoutEl.textContent = formatClock(current);
+      scrubberBufferedEl.style.width = `${bufferedPercent}%`;
+      scrubberFillEl.style.width = `${percent}%`;
+      scrubberThumbEl.style.left = `${percent}%`;
+    }
+
+    function updateBufferState() {
+      const duration = getDuration();
+      if (!duration) {
+        scrubberBufferedEl.style.width = "0%";
+        return;
+      }
+      const bufferedEnd = Math.min(duration, getLastRangeEnd(player.buffered));
+      const bufferedPercent = Math.min(100, (bufferedEnd / duration) * 100);
+      scrubberBufferedEl.style.width = `${bufferedPercent}%`;
+    }
+
+    function buildSources(entry) {
+      const primaryCodec = entry.codec || "";
+      const sources = [{
+        file: entry.file,
+        codec: primaryCodec,
+        label: primaryCodec ? `${primaryCodec.toUpperCase()} primary` : "Primary source"
+      }];
+
+      if (entry.fallback_file) {
+        sources.push({
+          file: entry.fallback_file,
+          codec: entry.fallback_codec || "",
+          label: entry.fallback_codec ? `${entry.fallback_codec.toUpperCase()} fallback` : "Fallback source"
+        });
+      }
+
+      return sources.filter((source, idx, list) => {
+        return source.file && list.findIndex((candidate) => candidate.file === source.file) === idx;
+      });
+    }
+
+    function normalizeTrack(entry, idx) {
+      const sources = buildSources(entry);
+      return {
+        id: entry.id || `clip-${idx + 1}`,
+        title: entry.title || `Clip ${String(idx + 1).padStart(2, "0")}`,
+        note: entry.note || "",
+        width: Number(entry.width) || null,
+        height: Number(entry.height) || null,
+        duration: Number(entry.duration) || null,
+        sources
+      };
+    }
+
+    function extname(file) {
+      const match = /\.([^.]+)$/.exec(file || "");
+      return match ? match[1].toLowerCase() : "";
+    }
+
+    function codecFromFilename(file) {
+      const lower = (file || "").toLowerCase();
+      if (lower.includes("_h264")) return "h264";
+      if (lower.includes("_hevc") || lower.includes("_h265")) return "hevc";
+      const ext = extname(file);
+      if (ext === "mp4" || ext === "m4v") return "h264";
+      return "";
+    }
+
+    function titleFromFilename(file, idx) {
+      const base = (file || "")
+        .replace(/\.[^.]+$/, "")
+        .replace(/[_-](h264|hevc|h265)$/i, "")
+        .replace(/[_-]+/g, " ")
+        .trim();
+      return base ? base : `Clip ${String(idx + 1).padStart(2, "0")}`;
+    }
+
+    function canonicalVideoKey(file) {
+      return (file || "")
+        .replace(/\.[^.]+$/, "")
+        .replace(/[_-](h264|hevc|h265)$/i, "")
+        .toLowerCase();
+    }
+
+    function scoreDirectoryFile(file) {
+      const lower = (file || "").toLowerCase();
+      if (lower.includes("_h264")) return 3;
+      if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return 2;
+      return 1;
+    }
+
+    async function fetchPlaylistMetadata() {
+      try {
+        const res = await fetch("/video/playlist.json", { cache: "no-store" });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data.videos) ? data.videos : [];
+      } catch {
+        return [];
+      }
+    }
+
+    async function fetchDirectoryFiles() {
+      try {
+        const res = await fetch("/video/", { cache: "no-store" });
+        if (!res.ok) return null;
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const links = Array.from(doc.querySelectorAll("a[href]"))
+          .map((a) => a.getAttribute("href") || "")
+          .map((href) => decodeURIComponent(href.split("?")[0]))
+          .filter((href) => href && !href.endsWith("/") && !href.startsWith("."))
+          .filter((href) => /\.(mp4|m4v|webm|mov)$/i.test(href))
+          .filter((href) => href.toLowerCase() !== "playlist.json");
+        if (!links.length) return null;
+        return Array.from(new Set(links)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+      } catch {
+        return null;
+      }
+    }
+
+    function buildTracksFromDirectory(files, metadata) {
+      const metadataByFile = new Map();
+      const metadataOrder = new Map();
+      metadata.forEach((entry) => {
+        if (entry.file) metadataByFile.set(entry.file, entry);
+        if (entry.file) metadataOrder.set(entry.file, metadataOrder.size);
+      });
+
+      const preferredFiles = Array.from(files.reduce((map, file) => {
+        const key = canonicalVideoKey(file);
+        const current = map.get(key);
+        if (!current || scoreDirectoryFile(file) > scoreDirectoryFile(current)) {
+          map.set(key, file);
+        }
+        return map;
+      }, new Map()).values()).sort((a, b) => {
+        const orderA = metadataOrder.has(a) ? metadataOrder.get(a) : Number.MAX_SAFE_INTEGER;
+        const orderB = metadataOrder.has(b) ? metadataOrder.get(b) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+      });
+
+      return preferredFiles.map((file, idx) => {
+        const meta = metadataByFile.get(file) || {};
+        return normalizeTrack({
+          id: meta.id,
+          title: meta.title || titleFromFilename(file, idx),
+          file,
+          codec: meta.codec || codecFromFilename(file),
+          width: meta.width,
+          height: meta.height,
+          duration: meta.duration,
+          note: meta.note || "Loaded directly from the current `/video` directory."
+        }, idx);
+      });
+    }
+
+    function getTrack() {
+      return state.tracks[state.index] || null;
+    }
+
+    function getSource(track = getTrack()) {
+      if (!track) return null;
+      return track.sources[state.sourceIndex] || track.sources[0] || null;
+    }
+
+    function chooseSourceIndex(track) {
+      if (!track || !track.sources.length) return 0;
+      const preferred = track.sources.findIndex((source) => canPlayCodec(source.codec));
+      return preferred >= 0 ? preferred : 0;
+    }
+
+    function updateLabels() {
+      const track = getTrack();
+      const source = getSource(track);
+
+      if (!track || !source) {
+        document.documentElement.style.setProperty("--video-aspect", "9 / 16");
+        footerEl.textContent = "Playlist is empty.";
+        durationEl.textContent = "Duration: --";
+        return;
+      }
+
+      const width = track.width || player.videoWidth || 9;
+      const height = track.height || player.videoHeight || 16;
+      document.documentElement.style.setProperty("--video-aspect", `${width} / ${height}`);
+      footerEl.textContent = `Looping ${track.title}.`;
+      durationEl.textContent = `Duration: ${track.duration ? formatDuration(track.duration) : formatDuration(player.duration)}`;
+      updateProgress();
+    }
+
+    function setPlaybackState(text) {
+      playbackEl.textContent = text;
+    }
+
+    function clearSkipTimer() {
+      if (state.skipTimer) {
+        clearTimeout(state.skipTimer);
+        state.skipTimer = null;
+      }
+    }
+
+    function preloadUpcomingTrack() {
+      if (!state.tracks.length) return;
+      const nextIndex = (state.index + 1) % state.tracks.length;
+      const nextTrack = state.tracks[nextIndex];
+      const nextSourceIndex = chooseSourceIndex(nextTrack);
+      const nextSource = nextTrack?.sources?.[nextSourceIndex];
+      if (!nextSource || state.preloadedSourceFile === nextSource.file) return;
+      preloadPlayer.src = `/video/${encodeURIComponent(nextSource.file)}`;
+      preloadPlayer.load();
+      state.preloadedSourceFile = nextSource.file;
+    }
+
+    function applySource(track, sourceIdx, autoplay) {
+      const source = track.sources[sourceIdx];
+      state.sourceIndex = sourceIdx;
+      state.pendingAutoPlay = autoplay;
+      state.pendingSeekTime = null;
+      state.lastProgressSignature = "";
+      clearSkipTimer();
+      player.pause();
+      playBtn.disabled = true;
+      state.pendingSeekResume = false;
+      player.src = `/video/${encodeURIComponent(source.file)}`;
+      player.load();
+      updateLabels();
+      setPlaybackState("Loading");
+      updateProgress();
+      updateBufferState();
+    }
+
+    function loadTrack(index, options = {}) {
+      if (!state.tracks.length) return;
+      state.index = (index + state.tracks.length) % state.tracks.length;
+      const track = getTrack();
+      const sourceIndex = chooseSourceIndex(track);
+      applySource(track, sourceIndex, options.autoplay !== false);
+    }
+
+    function nextTrack() {
+      loadTrack(state.index + 1, { autoplay: true });
+    }
+
+    function prevTrack() {
+      loadTrack(state.index - 1, { autoplay: true });
+    }
+
+    function advanceSourceOrTrack() {
+      const track = getTrack();
+      if (!track) return;
+      if (state.sourceIndex + 1 < track.sources.length) {
+        applySource(track, state.sourceIndex + 1, true);
+        return;
+      }
+      nextTrack();
+    }
+
+    async function init() {
+      const metadata = await fetchPlaylistMetadata();
+      const files = await fetchDirectoryFiles();
+      if (files && files.length) {
+        state.tracks = buildTracksFromDirectory(files, metadata).filter((track) => track.sources.length);
+      } else {
+        state.tracks = metadata.map(normalizeTrack).filter((track) => track.sources.length);
+      }
+
+      if (!state.tracks.length) {
+        playBtn.disabled = true;
+        updateLabels();
+        setPlaybackState("Empty");
+        return;
+      }
+
+      playBtn.disabled = false;
+      loadTrack(0, { autoplay: true });
+    }
+
+    player.addEventListener("loadedmetadata", () => {
+      const track = getTrack();
+      if (track) {
+        if (!track.width) track.width = player.videoWidth || null;
+        if (!track.height) track.height = player.videoHeight || null;
+        if (!track.duration) track.duration = player.duration || null;
+      }
+      playBtn.disabled = false;
+      updateLabels();
+      preloadUpcomingTrack();
+      if (state.pendingAutoPlay) {
+        player.play().then(() => {
+          state.pendingAutoPlay = false;
+        }).catch(() => {
+          state.pendingAutoPlay = false;
+          footerEl.textContent = "Ready to play.";
+          setPlaybackState("Paused");
+        });
+      }
+    });
+
+    player.addEventListener("play", () => {
+      playBtn.innerHTML = "&#10074;&#10074;";
+      playBtn.setAttribute("aria-label", "Pause playback");
+      setPlaybackState("Playing");
+      footerEl.textContent = `Running ${getSource()?.file || "current source"} in continuous loop mode.`;
+    });
+
+    player.addEventListener("pause", () => {
+      playBtn.innerHTML = "&#9654;";
+      playBtn.setAttribute("aria-label", "Resume playback");
+      if (!player.ended) setPlaybackState("Paused");
+    });
+
+    player.addEventListener("ended", () => {
+      setPlaybackState("Advancing");
+      nextTrack();
+    });
+
+    player.addEventListener("seeking", () => {
+      setPlaybackState("Seeking");
+    });
+
+    player.addEventListener("seeked", () => {
+      const shouldResume = state.pendingSeekResume;
+      state.pendingSeekTime = null;
+      state.pendingSeekResume = false;
+      if (shouldResume && player.paused) {
+        player.play().catch(() => {
+          setPlaybackState("Paused");
+        });
+      } else {
+        setPlaybackState(player.paused ? "Paused" : "Playing");
+      }
+      updateProgress();
+    });
+
+    player.addEventListener("waiting", () => {
+      setPlaybackState("Buffering");
+    });
+
+    player.addEventListener("stalled", () => {
+      setPlaybackState("Stalled");
+    });
+
+    player.addEventListener("canplay", () => {
+      if (state.pendingSeekResume && player.paused) {
+        player.play().catch(() => {
+          setPlaybackState("Paused");
+        });
+      } else if (!player.paused) {
+        setPlaybackState("Playing");
+      }
+      updateBufferState();
+    });
+
+    player.addEventListener("timeupdate", updateProgress);
+    player.addEventListener("loadedmetadata", updateProgress);
+    player.addEventListener("durationchange", updateProgress);
+    player.addEventListener("progress", updateBufferState);
+
+    player.addEventListener("error", () => {
+      const source = getSource();
+      footerEl.textContent = "The current source failed to decode cleanly. Advancing through fallback chain.";
+      setPlaybackState("Recovering");
+      clearSkipTimer();
+      state.skipTimer = window.setTimeout(() => {
+        advanceSourceOrTrack();
+      }, 350);
+    });
+
+    playBtn.addEventListener("click", () => {
+      if (player.paused) {
+        player.play().catch(() => {
+          footerEl.textContent = "Playback request was blocked by the browser.";
+          setPlaybackState("Blocked");
+        });
+      } else {
+        player.pause();
+      }
+    });
+
+    document.getElementById("next-btn").addEventListener("click", nextTrack);
+    document.getElementById("prev-btn").addEventListener("click", prevTrack);
+    document.getElementById("back-btn").addEventListener("click", () => {
+      seekToTime((player.currentTime || 0) - 10);
+    });
+    document.getElementById("forward-btn").addEventListener("click", () => {
+      const duration = getDuration() || (player.currentTime || 0) + 10;
+      seekToTime(Math.min(duration, (player.currentTime || 0) + 10));
+    });
+
+    function handleScrubPointer(event) {
+      const rect = scrubberEl.getBoundingClientRect();
+      seekToRatio((event.clientX - rect.left) / rect.width);
+    }
+
+    scrubberEl.addEventListener("pointerdown", (event) => {
+      state.seekDragActive = true;
+      scrubberEl.setPointerCapture(event.pointerId);
+      handleScrubPointer(event);
+    });
+    scrubberEl.addEventListener("pointermove", (event) => {
+      if (!state.seekDragActive) return;
+      handleScrubPointer(event);
+    });
+    scrubberEl.addEventListener("pointerup", (event) => {
+      if (!state.seekDragActive) return;
+      state.seekDragActive = false;
+      scrubberEl.releasePointerCapture(event.pointerId);
+      handleScrubPointer(event);
+    });
+    scrubberEl.addEventListener("pointercancel", () => {
+      state.seekDragActive = false;
+    });
+    timeReadoutEl.addEventListener("click", () => {
+      const duration = getDuration();
+      if (!duration) return;
+      seekToTime((player.currentTime || 0) > 1 ? 0 : Math.max(0, duration - 10));
+    });
+
+    init();
+  </script>
+</body>
+</html>

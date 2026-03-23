@@ -1,0 +1,36 @@
+#!/usr/bin/python
+import binascii
+import sys
+
+whattodo = sys.argv[1]
+#print(whattodo)
+
+def addspaces(string, length):
+    return ' '.join(string[i:i+length] for i in xrange(0,len(string),length))
+
+def text_to_bits(text, encoding='utf-8', errors='surrogatepass'):
+    bits = bin(int(binascii.hexlify(text.encode(encoding, errors)), 16))[2:]
+    return bits.zfill(8 * ((len(bits) + 7) // 8))
+
+def text_from_bits(bits, encoding='utf-8', errors='surrogatepass'):
+    n = int(bits, 2)
+    return int2bytes(n).decode(encoding, errors)
+
+def int2bytes(i):
+    hex_string = '%x' % i
+    n = len(hex_string)
+    return binascii.unhexlify(hex_string.zfill(n + (n & 1)))
+
+
+
+if "b" in whattodo:
+	txtdata =  " ".join(sys.argv[2:None])
+	result = text_to_bits(txtdata)
+	if "s" in whattodo:
+		result = addspaces(result,8)
+	print(result)
+
+if "a" in whattodo:
+	bindata =  "".join(sys.argv[2:None])
+	result = text_from_bits(bindata)
+	print(result)

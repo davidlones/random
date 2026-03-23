@@ -1,0 +1,38 @@
+transcript_globs:
+  - ~/.local/state/radio/archive/jobs/*/transcripts.jsonl
+  - ~/.local/state/radio/multichannel/jobs/*/channels/*/transcripts.jsonl
+  - ~/.local/state/radio/monitor_transcript.jsonl
+decoder_hits_globs:
+  - ~/.local/state/radio/decoder_hits.log
+event_output: ~/.local/state/radio/events.jsonl
+sol_log: ~/.local/state/radio/sol_log.txt
+state_dir: ~/.local/state/radio/cortex
+working_memory_path: ~/.local/state/radio/working_memory.json
+manual_inference_trigger_path: ~/.local/state/radio/cortex/manual_inference.trigger
+
+model:
+  path: ~/.cache/models/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+  openai_model: gpt-5-mini
+  context: 2048
+  threads: 6
+  max_tokens: 160
+  temperature: 0.1
+  backend: openai
+
+processing:
+  batch_seconds: 10
+  idle_flush_seconds: 3
+  inference_window_seconds: 180
+  inference_max_items: 256
+  poll_interval_seconds: 1.0
+  max_batch_items: 8
+  start_at_end: true
+  write_narration: true
+  min_text_chars: 12
+  coalesce_window_seconds: 60
+  novelty_filter: true
+  novelty_window_seconds: 180
+  working_memory_recent_summaries: 20
+  dtmf_sequence_max_tones: 5
+  dtmf_sequence_max_gap_seconds: 15
+  dtmf_context_window_seconds: 20

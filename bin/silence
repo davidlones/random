@@ -1,0 +1,3 @@
+#!/bin/bash
+
+mpg123 --loop -1 /home/davidlones/sfx/1-hour-of-silence.mp3

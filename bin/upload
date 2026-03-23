@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+
+echo "Compressing files . . ."
+cd /Users/davidlones/Public/drop/Temmierim-EULA/Default
+zip -r Default.hyperesources.zip Default.hyperesources
+
+cd /Users/davidlones/Public/drop/Temmierim-HOME/Default
+zip -r Default.hyperesources.zip Default.hyperesources
+
+cd /Users/davidlones/Public/drop/Temmierim-DASH/Default
+zip -r Default.hyperesources.zip Default.hyperesources
+
+echo "Uploading EULA files . . ."
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-EULA/Default/Default.hyperesources.zip root@temmierim.net:/var/www/
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-EULA/Default/index.html root@temmierim.net:/var/www/
+ssh -qp 56278 root@temmierim.net "cd /var/www && unzip Default.hyperesources.zip && rm Default.hyperesources.zip"
+
+echo "Uploading HOME files . . ."
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-HOME/Default/Default.hyperesources.zip root@temmierim.net:/var/www/default/
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-HOME/Default/index.html root@temmierim.net:/var/www/default/home.html
+ssh -qp 56278 root@temmierim.net "cd /var/www/default && unzip Default.hyperesources.zip && rm Default.hyperesources.zip"
+
+echo "Uploading DASH files . . ."
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-DASH/Default/Default.hyperesources.zip root@temmierim.net:/var/www/secure/
+scp -qP 56278 /Users/davidlones/Public/drop/Temmierim-DASH/Default/index.html root@temmierim.net:/var/www/secure/dashboard.html
+ssh -qp 56278 root@temmierim.net "cd /var/www/secure && unzip Default.hyperesources.zip && rm Default.hyperesources.zip"
+
+echo "DONE"
+
+
+else
+
+scp -qP 56278 $1 root@temmierim.net:$2
+
+fi

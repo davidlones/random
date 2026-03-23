@@ -1,0 +1,21 @@
+#!/bin/bash
+# _0853RV3R
+
+/home/davidlones/.bin/sendtext
+
+amixer set 'Master' 75%
+/home/davidlones/.bin/wemo 10.0.1.33 off
+
+espeak -p 0 -g 0 -s 205 "Hello, David."
+
+/home/davidlones/.bin/wemo 10.0.1.33 on
+sleep 0.3
+/home/davidlones/.bin/wemo 10.0.1.33 off
+sleep 3
+
+espeak -p 0 -g 0 -s 205 "It is $(date +'%A, %B %d')."
+espeak -p 0 -g 0 -s 205 "The current time, is $(date +'%I:%M %p')"
+
+amixer set 'Master' 60%
+/home/davidlones/.bin/spot spotify:user:1288214:playlist:7HujQ6SFh4p9JB6DxNcmN7
+/home/davidlones/.bin/wemo 10.0.1.33 on

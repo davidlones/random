@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+# focus v0.1
+# 	Usage: focus <activate/deactivate>
+#
+# Tune out the noise of multiple monitors.
+# Put your secondary display to sleep and focus on a single task.
+#
+#
+# Known bugs/issues: 
+# -resets display to mirrored mode upon deactivating
+# -not tested using more then 2 connected display devices
+
+DISPLAY=:0
+export DISPLAY
+
+secondary=$(xrandr --query | grep "-" | grep " conn" | grep -v "primary" | head -n1 | awk '{print $1;}')
+option=$1
+
+
+if [ "$option" = "activate" ]
+    then
+        xrandr --output $secondary  --off
+
+elif [ "$option" = "deactivate" ]
+    then
+        xrandr --output $secondary  --auto
+        xrandr --output HDMI-3 --auto --left-of HDMI-2
+
+else
+	    echo "focus v0.1"
+	    echo "	Usage: focus <activate/deactivate>"
+fi

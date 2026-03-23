@@ -1,0 +1,4 @@
+#!/bin/bash
+TEMP=$(sensors | grep -A 0 'Package id 0' | cut -c 17-18)
+figlet -w 200 -f banner $(date)
+figlet -f banner $TEMP C

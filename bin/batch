@@ -1,0 +1,6 @@
+#!/bin/bash
+for i in */*.MOD;
+  do name=`stat -f "%Sm" -t "%Y%m%dT%H%M%S" $i`;
+  echo "$i >>> CAMERA/$name.mp4";
+  ffmpeg -i $i -vcodec libx264 -crf 24 /Users/davidlones/Desktop/CAMERA/$name.mp4 >> /Users/davidlones/Desktop/CAMERA/ffmpeg.log 2>&1;
+done

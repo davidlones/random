@@ -1,0 +1,4 @@
+MasterBot change summary for the last 48 hours: reaction controls were expanded and stabilised with queuing, debounce, and periodic reaction restoration.
+LLM narration and analyst functions were added with cooldown and caching, and enabled by default.
+Telemetry now includes FPS, system uptime, CPU and GPU temperatures, ambient, particulate, light, and Apollo sensor data from Home Assistant. The render loop gained a persistent controls footer, analyst panel, and tighter frame trimming.
+Abort now triggers a graceful soft reboot with countdown and phases, a plus debug command can create or replace pinned console messages per channel. Runtime channel IDs, pinned message IDs, voice presets, and Deer Valley Visitor role settings were moved into database-backed runtime config.

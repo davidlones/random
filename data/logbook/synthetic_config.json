@@ -1,0 +1,115 @@
+{
+  "baseline": [
+    {
+      "created_at": "2026-03-21T23:58:00Z",
+      "channel": "public-logbook",
+      "name": "northcoil",
+      "message": "faq: if the lamps are mentioned, do not answer with your real name"
+    },
+    {
+      "created_at": "2026-03-22T00:27:00Z",
+      "channel": "public-logbook",
+      "name": "glasschild",
+      "message": "use My Computer first. the site map notices confidence."
+    },
+    {
+      "created_at": "2026-03-22T01:12:00Z",
+      "channel": "archive-watch",
+      "name": "watchtower",
+      "message": "faq: if the monitor and the log disagree for one minute, wait for the roll before naming a fault."
+    },
+    {
+      "created_at": "2026-03-22T01:46:00Z",
+      "channel": "civilization-sim",
+      "name": "civsim_ops",
+      "message": "leave the red city unnamed unless you want the model to keep it."
+    }
+  ],
+  "transient_scenes": [
+    {
+      "start": 2,
+      "duration": 9,
+      "entries": [
+        {
+          "channel": "public-logbook",
+          "name": "quietguest",
+          "message": "faq: yes, the channels are seeded. no, that does not mean they are fictional."
+        },
+        {
+          "channel": "archive-watch",
+          "name": "watchtower",
+          "message": "if an object appears in the browser before disk, mark the time first and argue later."
+        }
+      ]
+    },
+    {
+      "start": 18,
+      "duration": 10,
+      "entries": [
+        {
+          "channel": "civilization-sim",
+          "name": "paperengine",
+          "message": "callback noted: the lamp line propagated into civsim again."
+        },
+        {
+          "channel": "public-logbook",
+          "name": "northcoil",
+          "message": "call to action: do not feed lamp-line hypotheses to the simulation."
+        }
+      ]
+    },
+    {
+      "start": 39,
+      "duration": 8,
+      "entries": [
+        {
+          "channel": "archive-watch",
+          "name": "indexghost",
+          "message": "faq: if it appeared in My Computer first, assume invitation before intrusion."
+        },
+        {
+          "channel": "public-logbook",
+          "name": "glasschild",
+          "message": "open the page once, then leave the cache alone."
+        }
+      ]
+    }
+  ],
+  "flash_events": [
+    {
+      "minute": 6,
+      "lifetime": 1,
+      "channel": "public-logbook",
+      "name": "signalroom",
+      "message": "brief notice: if you caught the carrier at the edge, do not quote it back verbatim."
+    },
+    {
+      "minute": 17,
+      "lifetime": 1,
+      "channel": "archive-watch",
+      "name": "watchtower",
+      "message": "brief notice: browser tree claims one extra object. wait one cycle before naming it real."
+    },
+    {
+      "minute": 29,
+      "lifetime": 1,
+      "channel": "civilization-sim",
+      "name": "paperengine",
+      "message": "brief notice: short pulse from the unnamed district. do not label it yet."
+    },
+    {
+      "minute": 44,
+      "lifetime": 1,
+      "channel": "public-logbook",
+      "name": "glasschild",
+      "message": "faq: asking whether the channels are seeded does not make them less operational."
+    },
+    {
+      "minute": 53,
+      "lifetime": 1,
+      "channel": "archive-watch",
+      "name": "indexghost",
+      "message": "brief notice: if a page blinks into the directory and back out, leave the cache alone."
+    }
+  ]
+}

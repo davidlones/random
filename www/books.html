@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="A static page connecting David’s political anxieties with Philip K. Dick’s recurring themes." />
+  <title>Signals in the Static — My Anxieties, Philip K. Dick, and the Present Tense</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#101824; --panel2:#0f1620;
+      --text:#e8eef7; --muted:#a9b6c7; --faint:#6f7f94;
+      --accent:#7bdcff; --accent2:#b48cff; --warn:#ffcc66; --bad:#ff6b6b;
+      --ok:#7dffb2; --line:#223247; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:var(--sans); color:var(--text); background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(123,220,255,.14), transparent 55%),
+        radial-gradient(1000px 700px at 85% 20%, rgba(180,140,255,.12), transparent 55%),
+        linear-gradient(180deg, #070a0f 0%, var(--bg) 100%);
+      line-height:1.55;
+    }
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    header{
+      padding:64px 20px 30px;
+      border-bottom:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,24,36,.85) 0%, rgba(16,24,36,.35) 70%, transparent 100%);
+    }
+    .wrap{max-width:1000px; margin:0 auto}
+    .kicker{
+      font-family:var(--mono);
+      color:var(--muted);
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-size:12px;
+    }
+    h1{margin:10px 0 8px; font-size:clamp(30px,4vw,44px); line-height:1.1}
+    .subtitle{color:var(--muted); max-width:80ch; font-size:16px}
+    .pillbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px}
+    .pill{
+      border:1px solid var(--line); color:var(--muted);
+      background: rgba(15,22,32,.6);
+      padding:7px 10px; border-radius:999px; font-size:12px;
+    }
+    main{padding:28px 20px 70px}
+    section{margin:28px 0}
+    .grid{display:grid; grid-template-columns:1fr; gap:14px}
+    @media(min-width:860px){ .grid-2{grid-template-columns:1fr 1fr} }
+    .card{
+      background: linear-gradient(180deg, rgba(16,24,36,.85), rgba(16,24,36,.55));
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px 18px 16px;
+      box-shadow:var(--shadow);
+    }
+    .card h2,.card h3{margin:0 0 10px}
+    h2{font-size:20px}
+    h3{font-size:16px; color:var(--text)}
+    .muted{color:var(--muted)}
+    .faint{color:var(--faint)}
+    .mono{font-family:var(--mono)}
+    .rule{height:1px; background:var(--line); margin:14px 0}
+    .tagrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .tag{
+      font-family:var(--mono);
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(8,12,18,.55);
+      color:var(--muted);
+    }
+    .tag.warn{border-color:rgba(255,204,102,.35); color:var(--warn)}
+    .tag.bad{border-color:rgba(255,107,107,.35); color:var(--bad)}
+    .tag.ok{border-color:rgba(125,255,178,.35); color:var(--ok)}
+    ul{margin:10px 0 0 18px; color:var(--muted)}
+    li{margin:6px 0}
+    blockquote{
+      margin:12px 0 0;
+      padding:12px 14px;
+      border-left:3px solid rgba(123,220,255,.55);
+      background: rgba(10,14,20,.55);
+      border-radius:10px;
+      color:var(--muted);
+    }
+    .callout{
+      border:1px solid rgba(255,204,102,.25);
+      background: rgba(255,204,102,.08);
+      border-radius:16px;
+      padding:14px 16px;
+    }
+    .callout strong{color:var(--warn)}
+    .footer{
+      border-top:1px solid var(--line);
+      padding:18px 20px 40px;
+      color:var(--faint);
+      background: rgba(15,22,32,.35);
+    }
+    .cols{display:grid; gap:12px}
+    @media(min-width:860px){ .cols{grid-template-columns: 1.2fr .8fr} }
+    .small{font-size:12.5px}
+    .hr{height:1px; background:var(--line); margin:10px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="kicker">static page / personal note / literature map</div>
+      <h1>Signals in the Static</h1>
+      <p class="subtitle">
+        A snapshot of my political anxieties placed beside Philip K. Dick’s recurring themes—because sometimes
+        the best way to describe the present is to borrow a lens from someone who kept asking:
+        <span class="mono">“Who controls reality?”</span>
+      </p>
+      <div class="pillbar" aria-label="topic pills">
+        <span class="pill">propaganda &amp; consensus</span>
+        <span class="pill">surveillance &amp; fear</span>
+        <span class="pill">state power &amp; “security”</span>
+        <span class="pill">media as reality-engine</span>
+        <span class="pill">fascism as a process (not a costume)</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+
+      <section class="callout">
+        <strong>Disclaimer:</strong>
+        <span class="muted">
+          This page reflects my opinions and anxieties—an interpretive reading of Dick’s fiction,
+          not a claim that any one headline or group “is” a PKD plot. The point is pattern-recognition,
+          not certainty. Viewer discretion advised: political content.
+        </span>
+      </section>
+
+      <section class="grid grid-2">
+        <article class="card">
+          <h2>Why Dick, now?</h2>
+          <p class="muted">
+            Dick wrote like a seismograph. The tremors he cared about weren’t laser guns—they were
+            <em>epistemic failures</em>: when people can’t agree on what’s real, and power learns it can govern
+            through confusion.
+          </p>
+          <div class="tagrow">
+            <span class="tag">epistemology</span>
+            <span class="tag">institutional trust</span>
+            <span class="tag">manufactured reality</span>
+            <span class="tag warn">normalization</span>
+          </div>
+          <blockquote class="small">
+            My working thesis: “fascism” doesn’t always arrive as a coup—it often arrives as a
+            series of “reasonable exceptions” justified by fear.
+          </blockquote>
+        </article>
+
+        <article class="card">
+          <h2>What I’m anxious about</h2>
+          <ul>
+            <li>Government power expanding under the banner of <span class="mono">security</span> and “order.”</li>
+            <li>Surveillance and enforcement normalized—especially around immigration and protest.</li>
+            <li>Truth becoming a competitive sport: algorithms rewarding outrage over accuracy.</li>
+            <li>Institutions hollowing out while their symbols remain intact.</li>
+            <li>“State’s rights” rhetoric being used to preserve harm, not liberty.</li>
+          </ul>
+          <div class="tagrow">
+            <span class="tag bad">authoritarian drift</span>
+            <span class="tag warn">fear politics</span>
+            <span class="tag">media capture</span>
+            <span class="tag">disinformation</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Two-book political lens: <em>High Castle</em> ⇄ <em>Radio Free Albemuth</em></h2>
+        <p class="muted">
+          Read together, these form a time-lapse of authoritarianism:
+          <em>The Man in the High Castle</em> shows the end state—occupation and normalization;
+          <em>Radio Free Albemuth</em> shows the transition—surveillance, propaganda, and dissent redefined as pathology.
+        </p>
+        <div class="rule"></div>
+        <div class="grid grid-2">
+          <div>
+            <h3><em>The Man in the High Castle</em> (1962)</h3>
+            <ul>
+              <li>Fascism as administration: the machine runs, people adapt.</li>
+              <li>History becomes pliable; legitimacy is a performance.</li>
+              <li>Truth is outsourced to an oracle (<span class="mono">I Ching</span>) because official reality is suspect.</li>
+            </ul>
+            <div class="tagrow">
+              <span class="tag warn">normalization</span>
+              <span class="tag">occupied culture</span>
+              <span class="tag">truth externalized</span>
+            </div>
+          </div>
+          <div>
+            <h3><em>Radio Free Albemuth</em> (written earlier; published posthumously)</h3>
+            <ul>
+              <li>Authoritarianism as a domestic brand: loyalty tests, surveillance, paranoia.</li>
+              <li>Truth arrives as signal—illegal, deniable, easy to dismiss.</li>
+              <li>Dissent is reframed as instability; “patriotism” becomes compliance.</li>
+            </ul>
+            <div class="tagrow">
+              <span class="tag bad">surveillance state</span>
+              <span class="tag warn">propaganda</span>
+              <span class="tag">signal / interference</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-2">
+        <article class="card">
+          <h2>My “headline anxieties,” translated into PKD themes</h2>
+          <p class="muted small">
+            (No specific headlines required; these are recurring categories of “present tense” news.)
+          </p>
+          <div class="hr"></div>
+
+          <h3>1) Enforcement &amp; “security” logic</h3>
+          <p class="muted">
+            When emergency powers become permanent and enforcement becomes identity-politics.
+          </p>
+          <div class="tagrow">
+            <span class="tag bad">permanent emergency</span>
+            <span class="tag">bureaucratic violence</span>
+          </div>
+          <p class="faint small">
+            Dick-adjacent: the state doesn’t need to be omnipotent—only <em>unquestionable</em>.
+          </p>
+
+          <div class="hr"></div>
+          <h3>2) Reality capture via media</h3>
+          <p class="muted">
+            When the information environment rewards certainty, speed, and outrage more than truth.
+          </p>
+          <div class="tagrow">
+            <span class="tag warn">consensus hacking</span>
+            <span class="tag">performative truth</span>
+          </div>
+
+          <div class="hr"></div>
+          <h3>3) Institutional legitimacy without substance</h3>
+          <p class="muted">
+            Symbols remain; trust decays. People learn to “play along” because opting out is costly.
+          </p>
+          <div class="tagrow">
+            <span class="tag">hollow institutions</span>
+            <span class="tag warn">compliance culture</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Four Dick works as a “map key”</h2>
+          <ul>
+            <li>
+              <strong><em>The Man in the High Castle</em></strong> — fascism normalized; history weaponized.
+            </li>
+            <li>
+              <strong><em>Radio Free Albemuth</em></strong> — domestic authoritarian drift; dissent pathologized; truth as signal.
+            </li>
+            <li>
+              <strong><em>The Three Stigmata of Palmer Eldritch</em></strong> — “salvation” indistinguishable from manipulation;
+              reality as a product you ingest.
+            </li>
+            <li>
+              <strong><em>VALIS</em></strong> (and its companion novels) — the world as overlay; the prison is epistemic;
+              revelation looks like psychosis.
+            </li>
+            <li>
+              <strong><em>Eye in the Sky</em></strong> — reality as a contested projection: a group trapped inside overlapping
+              private universes, each shaped by ideology and fear. The “eye” isn’t just observation—it’s the demand that
+              one worldview become everyone’s physics.
+            </li>
+          </ul>
+          <div class="tagrow">
+            <span class="tag">control systems</span>
+            <span class="tag">false gods</span>
+            <span class="tag warn">reality distortion</span>
+            <span class="tag">ideological worlds</span>
+          </div>
+
+          <blockquote class="small">
+            The connective theme: power rarely needs to “convince” everyone—
+            it only needs to keep enough people uncertain, tired, or isolated.
+          </blockquote>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Personal note: what I want to protect</h2>
+        <p class="muted">
+          My anxiety isn’t aesthetic. It’s practical: I want a world where people can disagree without
+          being labeled enemies, where enforcement is constrained, where institutions are accountable,
+          and where truth is a process—slow, checkable, and human.
+        </p>
+        <div class="tagrow">
+          <span class="tag ok">due process</span>
+          <span class="tag ok">accountability</span>
+          <span class="tag ok">human rights</span>
+          <span class="tag">epistemic humility</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>References: Philip K. Dick works mentioned</h2>
+        <p class="muted small">
+          (Titles only—this page avoids long quotations. Use your preferred edition/translator/notes.)
+        </p>
+        <ul>
+          <li><em>The Man in the High Castle</em></li>
+          <li><em>Radio Free Albemuth</em></li>
+          <li><em>The Three Stigmata of Palmer Eldritch</em></li>
+          <li><em>VALIS</em></li>
+          <li><em>The Divine Invasion</em></li>
+          <li><em>The Transmigration of Timothy Archer</em></li>
+          <li><em>Eye in the Sky</em></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap cols">
+      <div>
+        <div class="mono small">BUILD:</div>
+        <div class="small">
+          Static HTML + CSS. No tracking. No external assets. Copy into a single <span class="mono">.html</span> file and open locally.
+        </div>
+      </div>
+      <div>
+        <div class="mono small">NOTE:</div>
+        <div class="small">
+          This is a living document. If reality changes shape, update the map—not your integrity.
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>JavaScript Code</title>
+  </head>
+  <body>
+    <script>
+      // JavaScript code here
+      var takePhoto = confirm("Would you like to take a photo of the item?");
+
+      if (takePhoto) {
+        // Code for taking a photo here
+      }
+
+      // Next page for item details
+      var itemName = prompt("Enter the name of the item:");
+      var itemDesc = prompt("Enter a description of the item:");
+      var itemValue = prompt("Enter the dollar value of the item:");
+
+      var location = prompt("Enter the location of the item (e.g. /SITE/ROOM/SECTION/CONTAINER/SUB-CONTAINER/):");
+
+      // Alternatively, use a dropdown menu to select location
+      var location = {
+        site: "",
+        room: "",
+        section: "",
+        container: "",
+        subContainer: ""
+      }
+    </script>
+  </body>
+</html>

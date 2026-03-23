@@ -1,0 +1,55 @@
+
+DELAY 200
+ u n l o c k 
+DELAY 50
+ 
+GUI R
+ 
+DELAY 100
+ c m d 
+SPACE
+ / K 
+SPACE
+ ( S T A R T 
+SPACE
+ / M A X 
+SPACE
+ / H I G H 
+SPACE
+ / F 
+SPACE
+ c m d 
+SPACE
+ / K 
+SPACE
+ b a s h ) 
+ENTER
+ 
+DELAY 300
+ n y a n c a t 
+SPACE
+ & 
+SPACE
+ c m d . e x e 
+SPACE
+ / c 
+SPACE
+ ' p o w e r s h e l l 
+SPACE
+ - c 
+SPACE
+ ( N e w - O b j e c t 
+SPACE
+ M e d i a . S o u n d P l a y e r 
+SPACE
+ " 4 1 5 3 8 4 . w a v " ) . P l a y L o o p i n g ( ) ; 
+SPACE
+ S t a r t - S l e e p 
+SPACE
+ - s 
+SPACE
+ 9 9 9 9 9 9 ; 
+SPACE
+ E x i t ' 
+ENTER
+ 

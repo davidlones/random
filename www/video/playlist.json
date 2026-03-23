@@ -1,0 +1,22 @@
+{
+  "videos": [
+    {
+      "title": "Clip 01",
+      "file": "v12044gd0000d5uaic7og65j1ldcndg0_h264.mp4",
+      "codec": "h264",
+      "width": 576,
+      "height": 1250,
+      "duration": 286.434,
+      "note": "Auto-generated from the live `/video` directory."
+    },
+    {
+      "title": "Clip 02",
+      "file": "v12044gd0000d65525vog65ge46o2eug.MP4",
+      "codec": "h264",
+      "width": 720,
+      "height": 1280,
+      "duration": 283.767,
+      "note": "Auto-generated from the live `/video` directory."
+    }
+  ]
+}

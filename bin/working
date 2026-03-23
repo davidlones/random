@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if who | grep davidlones
+then echo yes
+fi

@@ -1,0 +1,24 @@
+:8888 {
+	root * /home/david/random/www
+
+	handle_path /api/logbook/* {
+		reverse_proxy 127.0.0.1:8890
+	}
+
+	log {
+		output file /tmp/pkd_caddy_access.log
+		format console
+	}
+
+	encode zstd gzip
+
+	@cacheable path *.mp4 *.jpg *.jpeg *.png *.svg *.ico
+	header @cacheable Cache-Control "public, max-age=86400"
+
+	@favicon path /favicon.ico
+	handle @favicon {
+		file_server
+	}
+
+	file_server
+}

@@ -1,0 +1,2 @@
+#!/bin/bash
+xclip -o | gpg -a -e -r davidlones -o- | xclip -sel cli

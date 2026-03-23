@@ -1,0 +1,556 @@
+#!/usr/bin/env python3
+"""Codex log summarization runtime powered by sol-ingest."""
+
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import logging
+import os
+import subprocess
+import time
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+LOG = logging.getLogger("codex-sol-ingest")
+
+SESSIONS_ROOT = Path("/home/david/.codex/sessions")
+WORKDIR = Path("/home/david")
+KNOWLEDGE_DIR = WORKDIR / "knowledge" / "codex_sessions"
+REPORT_MD = Path("/home/david/random/logs/codex_context_summary.md")
+REPORT_JSON = Path("/home/david/random/logs/codex_context_summary.json")
+BOOTSTRAP_STATE = Path("/home/david/random/logs/codex_summary_bootstrap_state.json")
+SOL_INGEST = Path("/home/david/.codex/skills/sol-ingest/scripts/sol_ingest.py")
+LOCAL_AI_CHAT = Path("/home/david/random/bin/local_ai_chat.py")
+
+QUERY_PACK = [
+    "major code changes and edited files",
+    "local llm usage and summarizer daemon behavior",
+    "systemd service activity and runtime health",
+    "bugs fixes incidents and troubleshooting",
+]
+
+
+class LocalLLM:
+    def __init__(self, start_if_needed: bool) -> None:
+        self.start_if_needed = start_if_needed
+        self.mod = None
+        self.server_proc = None
+        self.base_url = "http://127.0.0.1:18080"
+
+    def _load(self) -> None:
+        if self.mod is not None:
+            return
+        spec = importlib.util.spec_from_file_location("local_ai_chat_mod", str(LOCAL_AI_CHAT))
+        if spec is None or spec.loader is None:
+            raise RuntimeError("failed to load local_ai_chat.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.mod = mod
+
+    def _ensure_server(self) -> None:
+        self._load()
+        assert self.mod is not None
+        try:
+            self.mod.wait_for_server(self.base_url, timeout_s=3)
+            return
+        except Exception:
+            if not self.start_if_needed:
+                raise RuntimeError("local llama-server not reachable")
+        args = SimpleNamespace(
+            server_bin=self.mod.DEFAULT_SERVER_BIN,
+            model=self.mod.DEFAULT_MODEL,
+            host="127.0.0.1",
+            port=18080,
+            ctx_size=4096,
+            gpu_layers="all",
+            keep_server=True,
+            verbose_server=False,
+        )
+        self.server_proc = self.mod.start_llama_server(args)
+        self.mod.wait_for_server(self.base_url, timeout_s=90)
+
+    def summarize(self, prompt: str) -> str:
+        self._ensure_server()
+        assert self.mod is not None
+        model_id = self.mod.get_model_id(self.base_url, fallback=os.path.basename(self.mod.DEFAULT_MODEL))
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a terse engineering summarizer. Return 8-12 markdown bullets only.",
+            },
+            {"role": "user", "content": prompt},
+        ]
+        return self.mod.chat_once(
+            base_url=self.base_url,
+            model_id=model_id,
+            messages=messages,
+            temperature=0.2,
+            top_p=0.9,
+            max_tokens=350,
+            timeout=180,
+        ).strip()
+
+
+def atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def load_env_file(path: Path) -> int:
+    if not path.exists():
+        return 0
+    loaded = 0
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        key = k.strip()
+        val = v.strip().strip("'\"")
+        if key and key not in os.environ and val:
+            os.environ[key] = val
+            loaded += 1
+    return loaded
+
+
+def ensure_openai_key() -> None:
+    if os.getenv("OPENAI_API_KEY"):
+        return
+    candidates = [
+        Path("/home/david/.config/masterbot.env"),
+        Path("/home/david/.config/openai.env"),
+    ]
+    total = 0
+    for p in candidates:
+        total += load_env_file(p)
+    if total:
+        LOG.info("env.loaded_from_files vars=%s", total)
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is not set (and was not found in ~/.config/*.env)")
+
+
+def load_bootstrap_state() -> dict[str, Any]:
+    if not BOOTSTRAP_STATE.exists():
+        return {}
+    try:
+        return json.loads(BOOTSTRAP_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_bootstrap_state(state: dict[str, Any]) -> None:
+    atomic_write(BOOTSTRAP_STATE, json.dumps(state, indent=2))
+
+
+def parse_ts(raw: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def format_entry(obj: dict[str, Any]) -> str:
+    typ = str(obj.get("type") or "")
+    payload = obj.get("payload") if isinstance(obj.get("payload"), dict) else {}
+    if typ == "event_msg":
+        subtype = str(payload.get("type") or "")
+        if subtype == "user_message":
+            return f"event_msg/user_message: {str(payload.get('message') or '')[:600]}"
+        if subtype == "agent_message":
+            return f"event_msg/agent_message: {str(payload.get('message') or '')[:600]}"
+        return f"event_msg/{subtype}"
+    if typ == "response_item":
+        ptype = str(payload.get("type") or "")
+        if ptype == "function_call":
+            return f"response_item/function_call: {payload.get('name') or ''}"
+        if ptype == "custom_tool_call":
+            return f"response_item/custom_tool_call: {payload.get('name') or ''}"
+        return f"response_item/{ptype}"
+    return typ
+
+
+def export_sessions_to_knowledge(*, window_hours: int, all_history: bool) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    cutoff = None if all_history else now - timedelta(hours=window_hours)
+
+    sessions_seen: set[str] = set()
+    type_counts: Counter[str] = Counter()
+    total = 0
+    matched_log_files: list[Path] = []
+
+    for f in sorted(SESSIONS_ROOT.rglob("rollout-*.jsonl")):
+        file_has_match = False
+        with f.open("r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                ts_raw = obj.get("timestamp")
+                sid = obj.get("session_id")
+                if not isinstance(ts_raw, str):
+                    continue
+                ts = parse_ts(ts_raw)
+                if ts is None:
+                    continue
+                if cutoff is not None and ts < cutoff:
+                    continue
+                if not isinstance(sid, str) or not sid:
+                    sid = obj.get("payload", {}).get("id") if isinstance(obj.get("payload"), dict) else None
+                if not isinstance(sid, str) or not sid:
+                    sid = f.stem
+
+                sessions_seen.add(sid)
+                file_has_match = True
+                total += 1
+                type_counts[str(obj.get("type") or "unknown")] += 1
+        if file_has_match:
+            matched_log_files.append(f)
+
+    KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Manage codex session corpus as symlinks to original rollout logs (no duplicated content).
+    managed_prefix = "sessionlog__"
+    desired_links: dict[Path, Path] = {}
+    for src in matched_log_files:
+        rel = src.relative_to(SESSIONS_ROOT).as_posix().replace("/", "__")
+        name = f"{managed_prefix}{rel}.txt"
+        desired_links[KNOWLEDGE_DIR / name] = src
+
+    removed_managed = 0
+    created_managed = 0
+    updated_managed = 0
+    cleaned_legacy_files = 0
+
+    for existing in KNOWLEDGE_DIR.iterdir():
+        if existing.name == "_manifest.json":
+            continue
+        if existing.name.startswith(managed_prefix):
+            wanted_target = desired_links.get(existing)
+            if wanted_target is None:
+                if existing.is_symlink() or existing.is_file():
+                    existing.unlink()
+                    removed_managed += 1
+                continue
+            if existing.is_symlink():
+                try:
+                    current_target = existing.resolve()
+                except Exception:
+                    current_target = None
+                if current_target == wanted_target.resolve():
+                    continue
+            if existing.exists() or existing.is_symlink():
+                existing.unlink()
+            existing.symlink_to(wanted_target)
+            updated_managed += 1
+            continue
+        if existing.is_file() and not existing.is_symlink():
+            existing.unlink()
+            cleaned_legacy_files += 1
+
+    for link_path, target in desired_links.items():
+        if link_path.exists() or link_path.is_symlink():
+            continue
+        link_path.symlink_to(target)
+        created_managed += 1
+
+    manifest = {
+        "generated_at_utc": now.isoformat(),
+        "window_start_utc": cutoff.isoformat() if cutoff is not None else "all-history",
+        "window_label": "all-history" if cutoff is None else f"last-{window_hours}h",
+        "total_entries": total,
+        "sessions": len(sessions_seen),
+        "linked_rollout_files": len(desired_links),
+        "links_created": created_managed,
+        "links_updated": updated_managed,
+        "links_removed": removed_managed,
+        "legacy_files_removed": cleaned_legacy_files,
+        "type_counts": dict(type_counts),
+        "knowledge_dir": str(KNOWLEDGE_DIR),
+    }
+    (KNOWLEDGE_DIR / "_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return manifest
+
+
+def run_sol_ingest_build(backend: str, local_dim: int) -> dict[str, Any]:
+    proc = subprocess.run(
+        [
+            "python3",
+            str(SOL_INGEST),
+            "--backend",
+            backend,
+            "--local-dim",
+            str(local_dim),
+            "--knowledge-dir",
+            str(WORKDIR / "knowledge"),
+            "--cache-path",
+            str(WORKDIR / "logs" / "sol_embeddings.pkl"),
+            "build",
+            "--json",
+        ],
+        cwd=str(WORKDIR),
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"sol_ingest build failed: {proc.stderr or proc.stdout}")
+    return json.loads(proc.stdout)
+
+
+def run_sol_ingest_search(query: str, top_k: int, backend: str, local_dim: int) -> list[dict[str, Any]]:
+    proc = subprocess.run(
+        [
+            "python3",
+            str(SOL_INGEST),
+            "--backend",
+            backend,
+            "--local-dim",
+            str(local_dim),
+            "--knowledge-dir",
+            str(WORKDIR / "knowledge"),
+            "--cache-path",
+            str(WORKDIR / "logs" / "sol_embeddings.pkl"),
+            "search",
+            query,
+            "--no-build",
+            "-k",
+            str(top_k),
+            "--preview-chars",
+            "360",
+        ],
+        cwd=str(WORKDIR),
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"sol_ingest search failed: {proc.stderr or proc.stdout}")
+
+    results: list[dict[str, Any]] = []
+    current = None
+    for raw in proc.stdout.splitlines():
+        line = raw.strip("\n")
+        if line.startswith("[") and "]" in line and "#" in line:
+            # example: [0.123] path#chunk
+            current = {"header": line, "preview": ""}
+            results.append(current)
+        elif current is not None:
+            if line.strip() == "":
+                continue
+            if current["preview"]:
+                current["preview"] += "\n"
+            current["preview"] += line
+    return results
+
+
+def build_report(
+    *,
+    manifest: dict[str, Any],
+    build_stats: dict[str, Any],
+    query_results: dict[str, list[dict[str, Any]]],
+    llm_summary: str | None,
+) -> str:
+    lines: list[str] = []
+    lines.append("# Codex Context Summary (sol-ingest Rework)")
+    lines.append("")
+    lines.append(f"- Generated (UTC): {manifest.get('generated_at_utc')}")
+    lines.append(f"- Window label: {manifest.get('window_label')}")
+    lines.append(f"- Window start (UTC): {manifest.get('window_start_utc')}")
+    lines.append(f"- Total log entries processed: {manifest.get('total_entries')}")
+    lines.append(f"- Sessions processed: {manifest.get('sessions')}")
+    lines.append("")
+    lines.append("## Ingest Build Stats")
+    lines.append("")
+    lines.append(f"- Files total/new/updated/cached/removed: {build_stats.get('files_total')}/{build_stats.get('files_new')}/{build_stats.get('files_updated')}/{build_stats.get('files_cached')}/{build_stats.get('files_removed')}")
+    lines.append(f"- Chunks indexed total: {build_stats.get('chunks_indexed_total')}")
+    lines.append(f"- Chunks embedded this run: {build_stats.get('chunks_embedded_this_run')}")
+    lines.append(f"- Chunks reused cache: {build_stats.get('chunks_reused_cache')}")
+    lines.append(f"- Build elapsed (s): {build_stats.get('elapsed_s')}")
+
+    lines.append("")
+    lines.append("## Semantic Query Results")
+    lines.append("")
+    for q, hits in query_results.items():
+        lines.append(f"### Query: `{q}`")
+        lines.append("")
+        if not hits:
+            lines.append("- No matches")
+            lines.append("")
+            continue
+        for hit in hits[:4]:
+            lines.append(f"- {hit.get('header')}")
+            preview = (hit.get("preview") or "").strip()
+            if preview:
+                lines.append(f"  - {preview[:360]}")
+        lines.append("")
+
+    if llm_summary:
+        lines.append("## Local LLM Executive Summary")
+        lines.append("")
+        lines.append(llm_summary)
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Codex summary runtime using sol-ingest")
+    p.add_argument("--window-hours", type=int, default=48)
+    p.add_argument("--all-history", action="store_true")
+    p.add_argument("--interval", type=int, default=900)
+    p.add_argument("--once", action="store_true")
+    p.add_argument("--bootstrap-all-history", action="store_true")
+    p.add_argument("--embedding-backend", choices=["local-hash", "openai"], default="local-hash")
+    p.add_argument("--local-dim", type=int, default=512)
+    p.add_argument("--use-local-llm", action="store_true")
+    p.add_argument("--start-server-if-needed", action="store_true")
+    p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    return p.parse_args()
+
+
+def run_cycle(args: argparse.Namespace) -> None:
+    t0 = time.time()
+    state = load_bootstrap_state()
+    bootstrap_done = bool(state.get("bootstrap_done"))
+    effective_all_history = bool(args.all_history)
+    if args.bootstrap_all_history and not args.once and not args.all_history and not bootstrap_done:
+        effective_all_history = True
+    mode = "all-history" if effective_all_history else f"last-{args.window_hours}h"
+    LOG.info(
+        "cycle.start mode=%s requested_all_history=%s bootstrap_enabled=%s bootstrap_done=%s backend=%s use_local_llm=%s",
+        mode,
+        args.all_history,
+        args.bootstrap_all_history,
+        bootstrap_done,
+        args.embedding_backend,
+        args.use_local_llm,
+    )
+
+    t_export = time.time()
+    manifest = export_sessions_to_knowledge(window_hours=args.window_hours, all_history=effective_all_history)
+    LOG.info("sessions.exported entries=%s sessions=%s", manifest.get("total_entries"), manifest.get("sessions"))
+    LOG.info("phase.export.done duration_s=%.2f", time.time() - t_export)
+
+    if args.embedding_backend == "openai":
+        ensure_openai_key()
+    else:
+        LOG.info("embeddings.local backend=%s dim=%s", args.embedding_backend, args.local_dim)
+
+    t_build = time.time()
+    build_stats = run_sol_ingest_build(args.embedding_backend, args.local_dim)
+    LOG.info(
+        "ingest.build files_total=%s chunks_total=%s embedded_now=%s reused=%s",
+        build_stats.get("files_total"),
+        build_stats.get("chunks_indexed_total"),
+        build_stats.get("chunks_embedded_this_run"),
+        build_stats.get("chunks_reused_cache"),
+    )
+    LOG.info("phase.build.done duration_s=%.2f", time.time() - t_build)
+
+    query_results: dict[str, list[dict[str, Any]]] = {}
+    t_search = time.time()
+    for q in QUERY_PACK:
+        query_results[q] = run_sol_ingest_search(q, top_k=5, backend=args.embedding_backend, local_dim=args.local_dim)
+    LOG.info("ingest.search queries=%s", len(QUERY_PACK))
+    LOG.info("phase.search.done duration_s=%.2f", time.time() - t_search)
+
+    llm_summary = None
+    if args.use_local_llm:
+        try:
+            llm = LocalLLM(start_if_needed=args.start_server_if_needed)
+            prompt = (
+                "Summarize these semantic findings in 8-12 bullets for engineering context."
+                "Use only grounded information from the snippets.\n\n"
+                + json.dumps({k: v[:3] for k, v in query_results.items()}, indent=2)
+            )
+            t_llm = time.time()
+            LOG.info("llm.summary.start start_server_if_needed=%s", args.start_server_if_needed)
+            llm_summary = llm.summarize(prompt)
+            LOG.info("llm.summary chars=%s", len(llm_summary))
+            LOG.info("phase.llm.done duration_s=%.2f", time.time() - t_llm)
+        except Exception as exc:
+            llm_summary = f"- Local LLM summary unavailable: {exc}"
+            LOG.warning("llm.summary_failed err=%s", exc)
+
+    report_md = build_report(
+        manifest=manifest,
+        build_stats=build_stats,
+        query_results=query_results,
+        llm_summary=llm_summary,
+    )
+    atomic_write(REPORT_MD, report_md)
+
+    out_json = {
+        "manifest": manifest,
+        "mode": mode,
+        "bootstrap_enabled": args.bootstrap_all_history,
+        "bootstrap_done": bootstrap_done or (args.bootstrap_all_history and effective_all_history),
+        "embedding_backend": args.embedding_backend,
+        "local_dim": args.local_dim,
+        "build_stats": build_stats,
+        "query_results": query_results,
+        "llm_summary": llm_summary,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    atomic_write(REPORT_JSON, json.dumps(out_json, indent=2))
+
+    if args.bootstrap_all_history and effective_all_history and not bootstrap_done:
+        save_bootstrap_state(
+            {
+                "bootstrap_done": True,
+                "completed_at_utc": datetime.now(timezone.utc).isoformat(),
+                "entries": manifest.get("total_entries"),
+                "sessions": manifest.get("sessions"),
+            }
+        )
+        LOG.info("bootstrap.complete state_file=%s", BOOTSTRAP_STATE)
+
+    LOG.info("cycle.done report_md=%s report_json=%s duration_s=%.2f", REPORT_MD, REPORT_JSON, time.time() - t0)
+
+
+def main() -> int:
+    args = parse_args()
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)s codex-sol-ingest %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
+
+    while True:
+        try:
+            run_cycle(args)
+        except Exception as exc:
+            LOG.exception("cycle.error err=%s", exc)
+            err_md = (
+                "# Codex Context Summary (sol-ingest Rework)\n\n"
+                f"- Generated (UTC): {datetime.now(timezone.utc).isoformat()}\n"
+                f"- Status: ERROR\n"
+                f"- Error: {exc}\n"
+            )
+            atomic_write(REPORT_MD, err_md)
+            atomic_write(
+                REPORT_JSON,
+                json.dumps(
+                    {
+                        "status": "error",
+                        "error": str(exc),
+                        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+                    },
+                    indent=2,
+                ),
+            )
+        if args.once:
+            return 0
+        sleep_s = max(30, args.interval)
+        next_run = datetime.now(timezone.utc) + timedelta(seconds=sleep_s)
+        LOG.info("cycle.sleep seconds=%s next_run_utc=%s", sleep_s, next_run.isoformat())
+        time.sleep(sleep_s)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

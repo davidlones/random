@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sol-37 Threat Monitor</title>
+  <style>
+    :root {
+      --panel: #c0c0c0;
+      --panel-dark: #8a8a8a;
+      --panel-light: #f4f4f4;
+      --ink: #111;
+      --muted: #3c3c3c;
+      --blue: #000080;
+      --green: #0a7f39;
+      --amber: #8a5600;
+      --red: #8b1111;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      overflow: auto;
+      background: #c0c0c0;
+      color: var(--ink);
+      font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+      padding: 10px;
+    }
+
+    body.standalone {
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,.18), transparent 32%),
+        linear-gradient(180deg, #3f4e71 0%, #8890a1 18%, #bcbcbc 100%);
+      padding: 24px;
+    }
+
+    .panel {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto auto auto auto auto auto;
+      gap: 10px;
+      background: var(--panel);
+      border: 2px solid #fff;
+      border-right-color: #404040;
+      border-bottom-color: #404040;
+      box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #dfdfdf;
+      padding: 10px;
+    }
+
+    body.standalone .panel {
+      min-height: auto;
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 14px;
+      box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.28),
+        inset -1px -1px 0 #000,
+        inset 1px 1px 0 #dfdfdf;
+    }
+
+    .banner {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      background: #efefef;
+      border: 2px solid #fff;
+      border-right-color: var(--panel-dark);
+      border-bottom-color: var(--panel-dark);
+    }
+
+    .alert-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 35% 35%, #ffeb99, #d19800);
+      border: 1px solid #5f4300;
+      font-weight: 700;
+      font-size: 24px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 21px;
+    }
+
+    body.standalone h1 {
+      font-size: 26px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    body.standalone .subtitle {
+      font-size: 13px;
+      max-width: 88ch;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+    }
+
+    .stat,
+    .section {
+      padding: 8px 10px;
+      background: #efefef;
+      border: 2px solid #fff;
+      border-right-color: var(--panel-dark);
+      border-bottom-color: var(--panel-dark);
+    }
+
+    .stat .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .stat .value {
+      margin-top: 4px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    body.standalone .stat .value {
+      font-size: 28px;
+    }
+
+    .value.green { color: var(--green); }
+    .value.amber { color: var(--amber); }
+    .value.red { color: var(--red); }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .triple {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .section h2 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      border-bottom: 1px dotted #b2b2b2;
+    }
+
+    .row:last-child { border-bottom: 0; }
+    .row span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .row .hits { font-weight: 700; }
+
+    .log {
+      max-height: 100%;
+      overflow: auto;
+      display: grid;
+      gap: 6px;
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+    }
+
+    .entry {
+      padding: 6px 7px;
+      background: #fff;
+      border: 1px solid #7b7b7b;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .entry strong {
+      display: block;
+      color: var(--blue);
+      margin-bottom: 3px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    body.standalone .split:last-of-type .section,
+    body.standalone .triple .section {
+      min-height: 220px;
+    }
+
+    body.standalone .log {
+      max-height: 420px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .button {
+      padding: 5px 12px;
+      border: 1px solid #000;
+      box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+      background: var(--panel);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1080px) {
+      .triple { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 6px; }
+      .stats, .split, .triple { grid-template-columns: 1fr; }
+      .panel { grid-template-rows: auto auto auto auto auto auto; }
+      .banner {
+        grid-template-columns: 1fr;
+      }
+      .alert-icon {
+        display: none;
+      }
+      h1 {
+        font-size: 18px;
+      }
+      .subtitle {
+        font-size: 11px;
+      }
+      .stat .value,
+      body.standalone .stat .value {
+        font-size: 24px;
+      }
+      .footer {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .button {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: 4px;
+      }
+      .panel {
+        gap: 6px;
+        padding: 6px;
+      }
+      .banner,
+      .stat,
+      .section {
+        padding: 6px;
+      }
+      h1 {
+        font-size: 16px;
+      }
+      .subtitle {
+        font-size: 10px;
+      }
+      .row,
+      .log {
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="panel">
+    <div class="banner">
+      <div class="alert-icon">!</div>
+      <div>
+        <h1>Archive Traffic Scan Complete</h1>
+        <p class="subtitle">
+          Sol-37 Sentinel read the local server access log and found signs of ongoing archive activity.
+          No third-party analytics theatrics, just the machine reading its own footprints.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Observed Hits</div>
+        <div class="value green" id="stat-hits">--</div>
+      </div>
+      <div class="stat">
+        <div class="label">Unique Sources</div>
+        <div class="value amber" id="stat-ips">--</div>
+      </div>
+      <div class="stat">
+        <div class="label">External Hits</div>
+        <div class="value green" id="stat-ext-hits">--</div>
+      </div>
+      <div class="stat">
+        <div class="label">External Sources</div>
+        <div class="value amber" id="stat-ext-ips">--</div>
+      </div>
+      <div class="stat">
+        <div class="label">Tracked Host</div>
+        <div class="value" style="font-size:14px" id="stat-host">--</div>
+      </div>
+      <div class="stat">
+        <div class="label">Last Sweep</div>
+        <div class="value red" style="font-size:14px" id="stat-generated">--</div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="section">
+        <h2>Hot Paths</h2>
+        <div id="top-paths"></div>
+      </div>
+      <div class="section">
+        <h2>External Paths</h2>
+        <div id="top-external-paths"></div>
+      </div>
+    </div>
+
+    <div class="triple">
+      <div class="section">
+        <h2>Source Types</h2>
+        <div id="source-types"></div>
+      </div>
+      <div class="section">
+        <h2>Status Codes</h2>
+        <div id="status-codes"></div>
+      </div>
+      <div class="section">
+        <h2>Query Tags</h2>
+        <div id="query-tags"></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="section">
+        <h2>Recent Activity</h2>
+        <div class="log" id="recent-requests"></div>
+      </div>
+      <div class="section">
+        <h2>Hot Sources</h2>
+        <div id="top-ips"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Excludes internal polling paths like <code>/site-metrics.json</code>, <code>/api/logbook/messages</code>, and <code>/posts/index.json</code>.</span>
+      <button class="button" type="button" id="refresh-btn">Refresh</button>
+    </div>
+  </section>
+  <script>
+    const fmtTime = (iso) => {
+      if (!iso) return "--";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    };
+
+    const renderRows = (items, container, keyName) => {
+      container.innerHTML = "";
+      if (!items.length) {
+        container.innerHTML = '<div class="row"><span>No data yet.</span><span class="hits">0</span></div>';
+        return;
+      }
+      items.slice(0, 6).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<span>${item[keyName]}</span><span class="hits">${item.hits}</span>`;
+        container.appendChild(row);
+      });
+    };
+
+    async function loadMetrics() {
+      const res = await fetch(`site-metrics.json?ts=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      document.getElementById("stat-hits").textContent = data.total_hits ?? "--";
+      document.getElementById("stat-ips").textContent = data.unique_ips ?? "--";
+      document.getElementById("stat-host").textContent = data.host ?? "--";
+      document.getElementById("stat-generated").textContent = fmtTime(data.generated_at);
+      document.getElementById("stat-ext-hits").textContent = data.external_hits ?? "--";
+      document.getElementById("stat-ext-ips").textContent = data.external_unique_ips ?? "--";
+      renderRows(data.top_paths || [], document.getElementById("top-paths"), "path");
+      renderRows(data.top_external_paths || [], document.getElementById("top-external-paths"), "path");
+      renderRows(data.source_types || [], document.getElementById("source-types"), "label");
+      renderRows(data.status_codes || [], document.getElementById("status-codes"), "code");
+      renderRows(data.query_tags || [], document.getElementById("query-tags"), "label");
+      renderRows(data.top_ips || [], document.getElementById("top-ips"), "ip");
+
+      const recent = document.getElementById("recent-requests");
+      recent.innerHTML = "";
+      (data.recent_requests || []).slice(-8).reverse().forEach((entry) => {
+        const el = document.createElement("div");
+        el.className = "entry";
+        el.innerHTML = `<strong>${entry.method || "GET"} ${entry.uri}</strong><div>${entry.client_ip || "unknown source"} · ${entry.status ?? "--"} · ${entry.source_type || "unknown"}</div>`;
+        recent.appendChild(el);
+      });
+    }
+
+    document.getElementById("refresh-btn").addEventListener("click", () => {
+      loadMetrics().catch(() => {});
+    });
+
+    if (window.top === window.self) {
+      document.body.classList.add("standalone");
+    }
+
+    loadMetrics().catch(() => {
+      document.getElementById("stat-generated").textContent = "unavailable";
+    });
+    setInterval(() => {
+      if (document.hidden) return;
+      loadMetrics().catch(() => {});
+    }, 30000);
+  </script>
+</body>
+</html>

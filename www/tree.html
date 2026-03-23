@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>XP Desktop Tree – Physics Toy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: radial-gradient(circle at top, #1a2340 0%, #050713 60%, #000 100%);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+      #root {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      button {
+        font-family: inherit;
+      }
+    </style>
+
+    <!-- React / ReactDOM / Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useRef, useEffect, useState } = React;
+
+      function ChristmasTreeCanvas({ width = 340, height = 440 }) {
+        const canvasRef = useRef(null);
+        const stateRef = useRef(null);
+        const [menu, setMenu] = useState(null); // { x, y } in canvas coords
+
+        // ---------- helpers: coords & hit testing ----------
+        function getCanvasPoint(evt) {
+          const canvas = canvasRef.current;
+          if (!canvas) return null;
+
+          const rect = canvas.getBoundingClientRect();
+          const touch = evt.touches && evt.touches[0];
+          const clientX = touch ? touch.clientX : evt.clientX;
+          const clientY = touch ? touch.clientY : evt.clientY;
+
+          return {
+            x: clientX - rect.left,
+            y: clientY - rect.top,
+          };
+        }
+
+        function findHitObject(pos) {
+          const state = stateRef.current;
+          if (!state) return null;
+
+          // lights
+          for (let i = state.lights.length - 1; i >= 0; i--) {
+            const l = state.lights[i];
+            const dx = pos.x - l.x;
+            const dy = pos.y - l.y;
+            if (dx * dx + dy * dy <= 10 * 10) {
+              return { type: "light", index: i };
+            }
+          }
+
+          // ornaments
+          for (let i = state.ornaments.length - 1; i >= 0; i--) {
+            const o = state.ornaments[i];
+            const dx = pos.x - o.x;
+            const dy = pos.y - o.y;
+            if (dx * dx + dy * dy <= 10 * 10) {
+              return { type: "ornament", index: i };
+            }
+          }
+
+          // presents – approximate with circle
+          for (let i = state.presents.length - 1; i >= 0; i--) {
+            const p = state.presents[i];
+            const cx = p.x + p.w / 2;
+            const cy = p.y + p.h / 2;
+            const dx = pos.x - cx;
+            const dy = pos.y - cy;
+            const r = Math.max(p.w, p.h) * 0.6;
+            if (dx * dx + dy * dy <= r * r) {
+              return { type: "present", index: i };
+            }
+          }
+
+          return null;
+        }
+
+        function snapLightToBranch(light) {
+          const state = stateRef.current;
+          if (!state) return;
+
+          const centerX = width / 2;
+          let bestIdx = 0;
+          let bestDy = Infinity;
+
+          state.layers.forEach((layer, idx) => {
+            const dy = Math.abs(light.y - layer.y);
+            if (dy < bestDy) {
+              bestDy = dy;
+              bestIdx = idx;
+            }
+          });
+
+          const bestLayer = state.layers[bestIdx];
+          const snapThreshold = height * 0.1;
+
+          if (bestDy < snapThreshold) {
+            light.layerIndex = bestIdx;
+            light.targetY = bestLayer.y;
+            light.y = bestLayer.y;
+            // clamp X inside triangle width
+            const margin = 6;
+            const minX = centerX - bestLayer.w / 2 + margin;
+            const maxX = centerX + bestLayer.w / 2 - margin;
+            light.x = Math.min(maxX, Math.max(minX, light.x));
+          } else {
+            light.layerIndex = null;
+          }
+        }
+
+        // ---------- pointer handlers ----------
+        function handlePointerDown(evt) {
+          evt.preventDefault();
+          const pos = getCanvasPoint(evt);
+          if (!pos || !stateRef.current) return;
+
+          const hit = findHitObject(pos);
+          const state = stateRef.current;
+
+          if (hit) {
+            let arr;
+            if (hit.type === "light") arr = state.lights;
+            else if (hit.type === "ornament") arr = state.ornaments;
+            else arr = state.presents;
+
+            const obj = arr[hit.index];
+            if (!obj) return;
+
+            state.dragging = {
+              type: hit.type,
+              index: hit.index,
+              offsetX: obj.x - pos.x,
+              offsetY: obj.y - pos.y,
+            };
+            // stop swinging while dragged
+            if (hit.type === "light") {
+              obj.vy = 0;
+              obj.offsetY = 0;
+            }
+            setMenu(null);
+          } else {
+            // open context menu here
+            setMenu({ x: pos.x, y: pos.y });
+          }
+        }
+
+        function handlePointerMove(evt) {
+          const state = stateRef.current;
+          if (!state || !state.dragging) return;
+          const pos = getCanvasPoint(evt);
+          if (!pos) return;
+          evt.preventDefault();
+
+          const { type, index, offsetX, offsetY } = state.dragging;
+          let arr;
+          if (type === "light") arr = state.lights;
+          else if (type === "ornament") arr = state.ornaments;
+          else arr = state.presents;
+
+          const obj = arr[index];
+          if (!obj) return;
+
+          obj.x = pos.x + offsetX;
+          obj.y = pos.y + offsetY;
+        }
+
+        function handlePointerUp(evt) {
+          const state = stateRef.current;
+          if (!state || !state.dragging) return;
+
+          const { type, index } = state.dragging;
+          if (type === "light") {
+            const l = state.lights[index];
+            if (l) {
+              snapLightToBranch(l);
+            }
+          }
+
+          state.dragging = null;
+        }
+
+        function handleContextMenu(evt) {
+          evt.preventDefault();
+        }
+
+        // ---------- menu actions ----------
+        function addLightAtMenu() {
+          const state = stateRef.current;
+          if (!state || !menu) return;
+
+          const light = {
+            x: menu.x,
+            y: menu.y,
+            baseY: menu.y,
+            targetY: menu.y,
+            offsetY: 0,
+            vy: 0,
+            phase: Math.random() * Math.PI * 2,
+            hue: 20 + Math.random() * 300,
+            layerIndex: null,
+          };
+          snapLightToBranch(light);
+          state.lights.push(light);
+          setMenu(null);
+        }
+
+        function addOrnamentAtMenu() {
+          const state = stateRef.current;
+          if (!state || !menu) return;
+
+          const hues = [0, 40, 120, 200, 300];
+          const hue = hues[Math.floor(Math.random() * hues.length)];
+
+          state.ornaments.push({
+            x: menu.x,
+            y: menu.y,
+            hue,
+          });
+          setMenu(null);
+        }
+
+        function addPresentAtMenu() {
+          const state = stateRef.current;
+          if (!state || !menu) return;
+
+          const w = 34 + Math.random() * 14;
+          const h = 22 + Math.random() * 10;
+          const groundY = height * 0.79;
+          const minX = width * 0.25;
+          const maxX = width * 0.75 - w;
+          const x = Math.min(maxX, Math.max(minX, menu.x - w / 2));
+
+          state.presents.push({
+            x,
+            y: groundY,
+            w,
+            h,
+            hue: 10 + Math.random() * 260,
+          });
+          setMenu(null);
+        }
+
+        // ---------- drawing / animation ----------
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+
+          const ctx = canvas.getContext("2d");
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = width * dpr;
+          canvas.height = height * dpr;
+          canvas.style.width = width + "px";
+          canvas.style.height = height + "px";
+          ctx.scale(dpr, dpr);
+
+          const state = {
+            lights: [],
+            ornaments: [],
+            presents: [],
+            snowflakes: [],
+            stars: [],
+            layers: [],
+            dragging: null,
+          };
+          stateRef.current = state;
+
+          const maxSnowflakes = 120;
+          const numStars = 45;
+
+          // tree layers geometry
+          function initLayers() {
+            const layers = [];
+            const count = 5;
+            const baseWidth = width * 0.7;
+            const topY = height * 0.26;
+            const baseY = height * 0.62;
+
+            for (let i = 0; i < count; i++) {
+              const t = i / (count - 1);
+              const y = baseY - t * (baseY - topY);
+              const w = baseWidth * (1 - t * 0.75);
+              layers.push({ y, w });
+            }
+            state.layers = layers;
+          }
+
+          function createStars() {
+            state.stars.length = 0;
+            for (let i = 0; i < numStars; i++) {
+              state.stars.push({
+                x: Math.random() * width,
+                y: Math.random() * height * 0.45,
+                r: Math.random() * 0.9 + 0.2,
+                alpha: 0.4 + Math.random() * 0.4,
+              });
+            }
+          }
+
+          function createTreeLights() {
+            state.lights.length = 0;
+            const centerX = width / 2;
+
+            state.layers.forEach((layer, layerIndex) => {
+              const y = layer.y;
+              const w = layer.w;
+              const count = 10 + layerIndex * 3;
+
+              for (let j = 0; j < count; j++) {
+                const ratio = j / (count - 1 || 1);
+                const x = centerX - w / 2 + ratio * w;
+                const yBase = y + (Math.random() - 0.5) * 4;
+
+                state.lights.push({
+                  x: x + (Math.random() - 0.5) * 5,
+                  y: yBase,
+                  baseY: yBase,
+                  targetY: y,
+                  offsetY: 0,
+                  vy: 0,
+                  phase: Math.random() * Math.PI * 2,
+                  hue: 20 + Math.random() * 300,
+                  layerIndex,
+                });
+              }
+            });
+          }
+
+          function createSnowflakes() {
+            state.snowflakes.length = 0;
+            for (let i = 0; i < maxSnowflakes; i++) {
+              state.snowflakes.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                r: 1 + Math.random() * 2.5,
+                vy: 0.4 + Math.random() * 0.9,
+                drift: (Math.random() - 0.5) * 0.35,
+              });
+            }
+          }
+
+          initLayers();
+          createStars();
+          createTreeLights();
+          createSnowflakes();
+
+          function drawBackground(time) {
+            const g = ctx.createLinearGradient(0, 0, 0, height);
+            g.addColorStop(0, "#050716");
+            g.addColorStop(0.5, "#050816");
+            g.addColorStop(1, "#03040a");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, width, height);
+
+            const radius = Math.max(width, height);
+            const vg = ctx.createRadialGradient(
+              width / 2,
+              height * 0.18,
+              radius * 0.1,
+              width / 2,
+              height / 2,
+              radius * 0.9
+            );
+            vg.addColorStop(0, "rgba(80,100,200,0.12)");
+            vg.addColorStop(1, "rgba(0,0,0,0.95)");
+            ctx.fillStyle = vg;
+            ctx.fillRect(0, 0, width, height);
+
+            state.stars.forEach((s, idx) => {
+              const twinkle = 0.2 * Math.sin(time * 0.8 + idx * 1.7);
+              ctx.fillStyle = `rgba(255,255,255,${s.alpha + twinkle})`;
+              ctx.beginPath();
+              ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+
+          function drawSnow() {
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = "#ffffff";
+            state.snowflakes.forEach((fl) => {
+              ctx.beginPath();
+              ctx.arc(fl.x, fl.y, fl.r, 0, Math.PI * 2);
+              ctx.fill();
+            });
+            ctx.restore();
+          }
+
+          function updateSnow() {
+            for (const fl of state.snowflakes) {
+              fl.y += fl.vy;
+              fl.x += fl.drift;
+
+              if (fl.y > height + 5) {
+                fl.y = -5;
+                fl.x = Math.random() * width;
+              }
+              if (fl.x < -5) fl.x = width + 5;
+              if (fl.x > width + 5) fl.x = -5;
+            }
+          }
+
+          function drawTree() {
+            const centerX = width / 2;
+            const baseWidth = width * 0.7;
+            const baseY = height * 0.62;
+
+            const glow = ctx.createRadialGradient(
+              centerX,
+              baseY * 0.98,
+              width * 0.08,
+              centerX,
+              baseY,
+              width * 0.8
+            );
+            glow.addColorStop(0, "rgba(40,255,160,0.22)");
+            glow.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, width, height);
+
+            state.layers.forEach((layer) => {
+              const y = layer.y;
+              const w = layer.w;
+
+              const grad = ctx.createLinearGradient(
+                centerX,
+                y - 28,
+                centerX,
+                y + 32
+              );
+              grad.addColorStop(0, "#1d8b4e");
+              grad.addColorStop(0.5, "#0f5c33");
+              grad.addColorStop(1, "#072618");
+
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.moveTo(centerX, y - 28);
+              ctx.lineTo(centerX - w / 2, y + 32);
+              ctx.lineTo(centerX + w / 2, y + 32);
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.strokeStyle = "rgba(190,255,220,0.14)";
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            });
+
+            const trunkWidth = baseWidth * 0.18;
+            const trunkHeight = height * 0.1;
+            const trunkX = centerX - trunkWidth / 2;
+            const trunkY = baseY + 24;
+            const trunkGrad = ctx.createLinearGradient(
+              trunkX,
+              trunkY,
+              trunkX + trunkWidth,
+              trunkY + trunkHeight
+            );
+            trunkGrad.addColorStop(0, "#5a3a22");
+            trunkGrad.addColorStop(1, "#2b1d12");
+
+            ctx.fillStyle = trunkGrad;
+            ctx.fillRect(trunkX, trunkY, trunkWidth, trunkHeight);
+
+            ctx.fillStyle = "#f5f7ff";
+            ctx.beginPath();
+            ctx.moveTo(-10, height * 0.82);
+            ctx.quadraticCurveTo(
+              width * 0.28,
+              height * 0.76,
+              width * 0.55,
+              height * 0.83
+            );
+            ctx.quadraticCurveTo(
+              width * 0.82,
+              height * 0.9,
+              width + 10,
+              height * 0.86
+            );
+            ctx.lineTo(width + 10, height + 10);
+            ctx.lineTo(-10, height + 10);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          function drawStar(time) {
+            const centerX = width / 2;
+            const topY = height * 0.26;
+            const baseRadius = 10;
+            const pulse = 1 + Math.sin(time * 2.2) * 0.22;
+            const r = baseRadius * pulse;
+
+            ctx.save();
+            ctx.translate(centerX, topY - 34);
+            ctx.rotate(Math.sin(time * 0.7) * 0.05);
+
+            const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.3);
+            glowGrad.addColorStop(0, "rgba(255,255,200,0.95)");
+            glowGrad.addColorStop(0.4, "rgba(255,230,150,0.55)");
+            glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 3.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#fff7c2";
+            ctx.beginPath();
+            const spikes = 5;
+            const outerRadius = r;
+            const innerRadius = r * 0.45;
+            for (let i = 0; i < spikes * 2; i++) {
+              const angle = (i * Math.PI) / spikes;
+              const radius = i % 2 === 0 ? outerRadius : innerRadius;
+              ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+          }
+
+          function updateLightPhysics(dt, time) {
+            const stiffness = 18;   // spring strength
+            const damping = 6;      // air resistance
+            const windAmp = 5;
+
+            state.lights.forEach((l, idx) => {
+              if (state.dragging && state.dragging.type === "light" && state.dragging.index === idx) {
+                // while dragging, don't simulate
+                l.offsetY = 0;
+                l.vy = 0;
+                l.baseY = l.y;
+                l.targetY = l.y;
+                return;
+              }
+
+              if (l.layerIndex == null) {
+                // loose lights just shimmer
+                const wobble = Math.sin(time * 2 + l.phase) * 0.6;
+                l.y = l.baseY + wobble;
+                return;
+              }
+
+              const layer = state.layers[l.layerIndex];
+              l.targetY = layer.y;
+
+              const wind = Math.sin(time * 1.5 + l.x * 0.03) * windAmp;
+
+              const displacement = l.y - l.targetY;
+              const ay = (-stiffness * displacement - damping * l.vy + wind) / 50;
+
+              l.vy += ay * dt;
+              l.y += l.vy * dt;
+
+              // store offset mainly for string positioning
+              l.offsetY = l.y - l.targetY;
+            });
+          }
+
+          function drawLightsAndStrings(time) {
+            const layerMap = new Map();
+
+            state.lights.forEach((l) => {
+              let idx = l.layerIndex;
+              if (idx == null) return; // skip loose ones for strings
+              if (!layerMap.has(idx)) layerMap.set(idx, []);
+              layerMap.get(idx).push(l);
+            });
+
+            // draw garlands
+            layerMap.forEach((lights, layerIndex) => {
+              if (lights.length < 2) return;
+              lights.sort((a, b) => a.x - b.x);
+
+              ctx.save();
+              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = "rgba(220,230,255,0.4)";
+              ctx.beginPath();
+
+              lights.forEach((l, i) => {
+                const y = l.y;
+                if (i === 0) ctx.moveTo(l.x, y);
+                else ctx.lineTo(l.x, y);
+              });
+
+              ctx.stroke();
+              ctx.restore();
+            });
+
+            // individual light glows
+            state.lights.forEach((l) => {
+              const t = time * 3 + l.phase;
+              const baseAlpha = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t));
+              const outerAlpha = baseAlpha * 0.7;
+              const radius = 6;
+
+              const grad = ctx.createRadialGradient(
+                l.x,
+                l.y,
+                0,
+                l.x,
+                l.y,
+                radius
+              );
+              grad.addColorStop(0, `hsla(${l.hue}, 90%, 70%, ${outerAlpha})`);
+              grad.addColorStop(1, "rgba(0,0,0,0)");
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.arc(l.x, l.y, radius, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = `hsla(${l.hue}, 100%, 75%, 0.96)`;
+              ctx.beginPath();
+              ctx.arc(l.x, l.y, 2, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+
+          function drawOrnaments() {
+            state.ornaments.forEach((o) => {
+              ctx.save();
+              const grad = ctx.createRadialGradient(
+                o.x - 3,
+                o.y - 3,
+                2,
+                o.x,
+                o.y,
+                10
+              );
+              grad.addColorStop(0, `hsla(${o.hue}, 90%, 80%, 1)`);
+              grad.addColorStop(1, `hsla(${o.hue}, 80%, 30%, 1)`);
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.arc(o.x, o.y, 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            });
+          }
+
+          function drawPresents() {
+            state.presents.forEach((p) => {
+              ctx.save();
+              const grad = ctx.createLinearGradient(
+                p.x,
+                p.y,
+                p.x + p.w,
+                p.y + p.h
+              );
+              grad.addColorStop(0, `hsla(${p.hue}, 60%, 45%, 1)`);
+              grad.addColorStop(1, `hsla(${p.hue}, 70%, 30%, 1)`);
+              ctx.fillStyle = grad;
+              ctx.fillRect(p.x, p.y, p.w, p.h);
+
+              ctx.fillStyle = "rgba(255,255,255,0.8)";
+              ctx.fillRect(p.x + p.w / 2 - 2, p.y, 4, p.h);
+              ctx.fillRect(p.x, p.y + p.h / 2 - 2, p.w, 4);
+
+              ctx.restore();
+            });
+          }
+
+          let frameId = null;
+          let lastTime = 0;
+
+          function render(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            const time = timestamp / 1000;
+
+            ctx.clearRect(0, 0, width, height);
+            drawBackground(time);
+            drawSnow();
+            drawTree();
+            updateLightPhysics(dt || 0.016, time);
+            drawLightsAndStrings(time);
+            drawOrnaments();
+            drawPresents();
+            drawStar(time);
+            updateSnow();
+
+            frameId = requestAnimationFrame(render);
+          }
+
+          frameId = requestAnimationFrame(render);
+
+          return () => {
+            if (frameId) cancelAnimationFrame(frameId);
+          };
+        }, [width, height]);
+
+        const wrapperStyle = {
+          borderRadius: "12px",
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.1)",
+          backgroundColor: "black",
+          position: "relative",
+          touchAction: "none",
+        };
+
+        const menuStyle = menu
+          ? {
+              position: "absolute",
+              left: menu.x + 8,
+              top: menu.y + 8,
+              background: "rgba(10,14,30,0.96)",
+              borderRadius: "8px",
+              padding: "6px 8px",
+              border: "1px solid rgba(255,255,255,0.14)",
+              fontSize: "11px",
+              color: "#e0e4ff",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
+              zIndex: 10,
+            }
+          : {};
+
+        const menuBtnStyle = {
+          display: "block",
+          padding: "4px 0",
+          background: "transparent",
+          border: "none",
+          color: "inherit",
+          cursor: "pointer",
+          textAlign: "left",
+          width: "100%",
+        };
+
+        return (
+          <div style={wrapperStyle}>
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handlePointerDown}
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onMouseLeave={handlePointerUp}
+              onTouchStart={handlePointerDown}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
+              onContextMenu={handleContextMenu}
+            />
+            {menu && (
+              <div style={menuStyle}>
+                <button style={menuBtnStyle} onClick={addLightAtMenu}>
+                  Add light here
+                </button>
+                <button style={menuBtnStyle} onClick={addOrnamentAtMenu}>
+                  Add ornament here
+                </button>
+                <button style={menuBtnStyle} onClick={addPresentAtMenu}>
+                  Add present under tree
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function App() {
+        const appStyle = {
+          margin: 0,
+          padding: 0,
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#eee",
+        };
+
+        const cardStyle = {
+          boxShadow: "0 24px 60px rgba(0,0,0,0.65)",
+          borderRadius: "16px",
+          padding: "16px 18px 12px",
+          background:
+            "linear-gradient(145deg, rgba(8,12,25,0.96), rgba(20,30,60,0.98))",
+          border: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(12px)",
+        };
+
+        const titleStyle = {
+          fontSize: "14px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#9fb3ff",
+          marginBottom: "8px",
+        };
+
+        const subtitleStyle = {
+          fontSize: "12px",
+          color: "#b7c0e8",
+          opacity: 0.8,
+          marginBottom: "10px",
+        };
+
+        return (
+          <div style={appStyle}>
+            <div style={cardStyle}>
+              <div style={titleStyle}>Desktop Tree</div>
+              <div style={subtitleStyle}>Drag the lights. Break the garlands.</div>
+              <ChristmasTreeCanvas />
+            </div>
+          </div>
+        );
+      }
+
+      const rootEl = document.getElementById("root");
+      const root = ReactDOM.createRoot(rootEl);
+      root.render(<App />);
+    </script>
+  </body>
+</html>
