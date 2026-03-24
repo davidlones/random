@@ -10,6 +10,9 @@ plays it through a simple audio backend.
 - Optionally strikes the hour count after the full-hour phrase
 - Can run once for testing or stay resident in a scheduler loop
 - Supports quiet-hour style gating with `--active-hours`
+- Shows a transient control dialog during playback when a desktop display is available
+- Persists dialog-edited schedule settings in `/home/david/.local/state/westminster_chime/settings.json`
+- Supports separate scheduling for chime quarter marks and spoken announcements
 - Falls back to an internal copy of the same note pattern if the MIDI file is
   missing or unreadable
 
@@ -26,6 +29,12 @@ Play the current quarter if the current time is on a quarter boundary:
 
 ```bash
 python3 /home/david/random/bin/westminster_chime.py
+```
+
+Force the control dialog on for testing:
+
+```bash
+python3 /home/david/random/bin/westminster_chime.py --time 09:15 --dialog on
 ```
 
 Run continuously between 8am and 10pm:
@@ -51,6 +60,33 @@ Backend selection defaults to `auto`, which prefers:
 
 You can force a backend with `--backend ffplay` or disable sound with
 `--backend stdout`.
+
+## Dialog behavior
+
+- The playback dialog appears only while audio is active and dismisses itself once playback ends.
+- `Dismiss` stops only the current chime.
+- `Mute <N>m` stops the current chime and suppresses future ones until the mute window expires.
+- `Save Schedule` updates persisted chime enablement, active hours, quarter marks, hour strike, and spoken-announcement hours.
+- CLI flags still win when explicitly provided, so a cron entry that hardcodes `--active-hours` will override the saved dialog schedule.
+- When no saved schedule exists yet, the dialog reflects the effective cron-derived chime and announcement schedule where it can infer it.
+
+You can also open the same settings UI manually:
+
+```bash
+python3 /home/david/random/bin/westminster_chime.py --configure --dialog on
+```
+
+## Tray Icon
+
+- `--tray` starts an XFCE-compatible status tray icon using `AyatanaAppIndicator3`.
+- The tray menu can open the settings dialog, apply a temporary mute, clear mute, toggle chimes, or quit the tray process.
+- Autostart entry: `/home/david/.config/autostart/westminster-chime-tray.desktop`
+
+## Schedule Checks
+
+- `--should-chime --time HH:MM` exits `0` when the current settings allow a chime at that time, otherwise `1`.
+- `--should-announce --time HH:MM` exits `0` when the spoken announcement is allowed at that time, otherwise `1`.
+- `presence_greeting_11speak.sh` now uses `--should-announce` before speaking, so the greeting can be scheduled independently from the bell.
 
 ## Cron example
 

@@ -151,7 +151,16 @@ PY
 )"
 log "CHIME" "Nearest Westminster target is ${chime_time}. Close enough for bell work."
 
-if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
+announcement_allowed=true
+if ! /usr/bin/env python3 /home/david/random/bin/westminster_chime.py \
+  --should-announce \
+  --time "$base_time" \
+  >/dev/null 2>&1; then
+  announcement_allowed=false
+  log "SPEAK" "Announcement suppressed by Westminster schedule settings."
+fi
+
+if [ "$announcement_allowed" = true ] && [ -n "${ELEVENLABS_API_KEY:-}" ]; then
   if [ -s "$cache_path" ]; then
     log "CACHE" "Cache hit. Reusing existing audio instead of paying ElevenLabs to rediscover the obvious."
     if ! play_cached_mp3 "$cache_path"; then
@@ -168,6 +177,8 @@ if [ -n "${ELEVENLABS_API_KEY:-}" ]; then
       log "CACHE" "Generated and cached new greeting audio."
     fi
   fi
+elif [ "$announcement_allowed" = false ]; then
+  :
 else
   log "WARN" "ELEVENLABS_API_KEY not set; skipping spoken greeting and continuing to chime like a slightly offended tower."
 fi
